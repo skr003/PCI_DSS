@@ -75,13 +75,13 @@ deny[msg] {
 allow if {
     some resource in input.resources
     resource.type == "Microsoft.Authorization/roleAssignments"
-    not (resource.properties.scope == "/" and resource.properties.roleDefinitionId == "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c")
+    not (resource.properties.scope == sprintf("/subscriptions/%s", [input.subscription_id]) and resource.properties.roleDefinitionId == "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c")
 }
 
 deny[msg] {
     some resource in input.resources
     resource.type == "Microsoft.Authorization/roleAssignments"
-    resource.properties.scope == "/"
+    resource.properties.scope == sprintf("/subscriptions/%s", [input.subscription_id])
     resource.properties.roleDefinitionId == "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c" # Contributor role
     msg := sprintf("PCI DSS 7.2 violation: Broad Contributor role assigned at subscription level to '%s'. Use least privilege.", [resource.properties.principalId])
 }
