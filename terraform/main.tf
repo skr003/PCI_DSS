@@ -64,9 +64,6 @@ resource "azurerm_network_watcher" "nw" {
   name                = "${var.rg_name}-nw"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
-  retention_policy {
-  enabled = true
-  days    = <90 or greater>
 }
 
 # -----------------------
@@ -160,7 +157,6 @@ resource "azurerm_storage_account" "storage" {
   public_network_access_enabled = false  # further restrict public network access
   enable_https_traffic_only = true
   is_hns_enabled           = false
-  local_user_enabled       = false
   # advanced threat protection & encryption are provided by platform by default; add CMK if required.
 }
 
