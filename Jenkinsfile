@@ -25,8 +25,7 @@ pipeline {
                 }           
              sh 'terraform init -upgrade'
              sh 'terraform plan -out=tfplan'
-             sh 'terraform show -json tfplan > tfplan.json'
-             sh 'terraform show -json tfplan > output/azure.json'
+             sh 'terraform show -json tfplan > azure.json'
              archiveArtifacts artifacts: 'tfplan.json', followSymlinks: false
       }  
       }   
@@ -51,7 +50,7 @@ pipeline {
       steps {
         dir('IaC-Project/terraform') {
      //   sh 'opa eval --format pretty --data ../opa/policy.rego --input tfplan.json "data.policies.allow"'  
-          sh 'opa eval --input output/azure.json --data poliy/azure/pci_dss.rego "data.pci_dss.deny"'
+          sh 'opa eval --input azure.json --data poliy/azure/pci_dss.rego "data.pci_dss.deny"'
 
       }
       }  
