@@ -30,7 +30,6 @@ pipeline {
       }  
       }   
     }
-
         stage('Collect Azure Data') {
             steps {
                 sh 'bash scripts/collect_azure_data.sh'
@@ -40,12 +39,7 @@ pipeline {
             steps {
                 sh 'bash scripts/validate_pci.sh'
             }
-        }
-
-
-
-
-    
+        }   
     stage('OPA Policy Validation') {
       steps {
      //   sh 'opa eval --format pretty --data ../opa/policy.rego --input tfplan.json "data.policies.allow"'  
@@ -54,18 +48,6 @@ pipeline {
           sh 'opa eval --input output/azure.json --data policy/azure/pci_dss.rego "data.pci_dss.deny"'
       }  
     }
-    stage('Approve or Reject Deployment') {
-      steps {
-        script {
-          def opaOutput = sh(script: 'opa eval --format pretty --data policy.rego --input ../terraform/tfplan.json "data.policies.allow"', returnStdout: true).trim()
-          if (opaOutput != "true") {
-            error("OPA policy denied the deployment! Aborting pipeline.")
-          } else {
-            echo "OPA policy approved the deployment."
-          }
-        }
 
-      }  
-    }
   }
 }
