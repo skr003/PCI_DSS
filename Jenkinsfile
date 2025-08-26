@@ -50,7 +50,7 @@ pipeline {
       steps {
         dir('IaC-Project/terraform') {
      //   sh 'opa eval --format pretty --data ../opa/policy.rego --input tfplan.json "data.policies.allow"'  
-          sh 'opa eval --input output/azure.json --data policies/pci_dss.rego "data.pci_dss.deny"'
+          sh 'opa eval --input output/azure.json --data poliy/azure/pci_dss.rego "data.pci_dss.deny"'
 
       }
       }  
