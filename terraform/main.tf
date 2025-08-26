@@ -162,7 +162,7 @@ resource "azurerm_storage_account" "storage" {
   is_hns_enabled           = false
   local_user_enabled       = false
   queue_properties  {
-  logging {
+    logging {
         delete                = true
         read                  = true
         write                 = true
