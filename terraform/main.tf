@@ -144,7 +144,7 @@ resource "azurerm_network_watcher_flow_log" "nsg_flow_log" {
     network_watcher_flow_analytics_id = azurerm_log_analytics_workspace.law.id
   }
 }
-
+/*
 # -----------------------
 # Storage Account (hardened)
 # -----------------------
@@ -376,3 +376,4 @@ resource "azurerm_role_assignment" "example_reader" {
   role_definition_name = "Reader"
   principal_id         = "00000000-0000-0000-0000-000000000000" # Replace with real AAD object id
 }
+/*
