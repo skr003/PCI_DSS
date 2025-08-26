@@ -177,7 +177,7 @@ resource "azurerm_storage_account" "storage" {
   # advanced threat protection & encryption are provided by platform by default; add CMK if required.
 }
 
-resource "azurerm_private_endpoint" "storage_endpoint" {
+resource "azurerm_private_endpoint" "storage" {
   name                 = "example_private_endpoint"
   location             = azurerm_resource_group.rg.location
   resource_group_name  = azurerm_resource_group.rg.name
@@ -186,7 +186,7 @@ resource "azurerm_private_endpoint" "storage_endpoint" {
   private_service_connection {
     name                           = "storage_endpoint_psc"
     is_manual_connection           = false
-    private_connection_resource_id = azurerm_storage_account.storage_endpoint.id
+    private_connection_resource_id = azurerm_storage_account.storage.id
     subresource_names              = ["blob"]
   }
 }
