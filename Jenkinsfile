@@ -32,8 +32,6 @@ pipeline {
       }   
     }
 
-
-    stages {
         stage('Collect Azure Data') {
             steps {
                 sh 'bash scripts/collect_azure_data.sh'
@@ -44,7 +42,6 @@ pipeline {
                 sh 'bash scripts/validate_pci.sh'
             }
         }
-    }
     post {
         always {
             archiveArtifacts artifacts: 'output/*.json', fingerprint: true
