@@ -92,11 +92,11 @@ deny[msg] if {
 ##############################
 
 nsg_has_deny_all(nsg) if {
-  some rule
-  rule := nsg.values.security_rule[_]
-  rule.direction == "Inbound"
-  rule.access == "Deny"
-  rule.priority == 4096
+  some sr
+  sr := nsg.values.security_rule[_]
+  sr.direction == "Inbound"
+  sr.access == "Deny"
+  sr.priority == 4096
 }
 
 ##############################
