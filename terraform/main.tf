@@ -393,6 +393,19 @@ resource "azurerm_mssql_server" "sqlserver" {
     tenant_id      = "xxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
   }
 }
+resource "azurerm_private_endpoint" "sqlserver" {
+  name                = "sqlserver-endpoint"
+  location            = azurerm_resource_group.sqlserver.location
+  resource_group_name = azurerm_resource_group.sqlserver.name
+  subnet_id           = azurerm_subnet.example.id
+
+  private_service_connection {
+    name                           = "sqlserver-connection"
+    is_manual_connection           = false
+    private_connection_resource_id = azurerm_sql_server.sqlserver.id
+    subresource_name               = "sqlServer"
+  }
+}
 
 resource "azurerm_mssql_database" "sqldb" {
   name           = "pcidb"
