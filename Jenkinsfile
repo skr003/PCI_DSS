@@ -26,7 +26,7 @@ pipeline {
              sh 'terraform init -upgrade'
              sh 'terraform plan -out=tfplan'
              sh 'terraform show -json tfplan > azure.json'
-             archiveArtifacts artifacts: 'tfplan.json', followSymlinks: false
+             archiveArtifacts artifacts: 'azure.json', followSymlinks: false
       }  
       }   
     }
@@ -71,7 +71,7 @@ pipeline {
     }
     stage('Deploy to Azure') {
       steps {
-        sh 'terraform apply tfplan'
+         // sh 'terraform apply tfplan'
       }
     }
   }
