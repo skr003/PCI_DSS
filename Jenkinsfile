@@ -26,6 +26,7 @@ pipeline {
              sh 'terraform init -upgrade'
              sh 'terraform plan -out=tfplan'
              sh 'terraform show -json tfplan > tfplan.json'
+             sh 'terraform show -json tfplan > output/azure.json'
              archiveArtifacts artifacts: 'tfplan.json', followSymlinks: false
       }  
       }   
