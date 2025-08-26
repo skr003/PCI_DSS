@@ -1,97 +1,261 @@
-# Provider configuration for Azure
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~>3.50"
+    }
+  }
+  required_version = ">= 1.3.0"
+}
+
 provider "azurerm" {
   features {}
 }
 
-# Resource Group (assumed to exist, uncomment and configure if needed)
-# resource "azurerm_resource_group" "example" {
-#   name     = "rg-compliance-example"
-#   location = "West Europe"
-# }
+# -----------------------
+# Variables (tweak before use)
+# -----------------------
+variable "location" {
+  type    = string
+  default = "East US"
+}
 
-# Virtual Network (assumed to exist, uncomment and configure if needed)
-# resource "azurerm_virtual_network" "vnet" {
-#   name                = "vnet-compliance"
-#   address_space       = ["10.0.0.0/16"]
-#   location            = azurerm_resource_group.example.location
-#   resource_group_name = azurerm_resource_group.example.name
-# }
+variable "rg_name" {
+  type    = string
+  default = "pci-compliance-rg"
+}
 
-# Subnet for VM and SQL
-# resource "azurerm_subnet" "subnet" {
-#   name                 = "subnet-compliance"
-#   resource_group_name  = azurerm_resource_group.example.name
-#   virtual_network_name = azurerm_virtual_network.vnet.name
-#   address_prefixes     = ["10.0.1.0/24"]
-# }
+# Set to a secure admin public key path
+variable "admin_ssh_pubkey_path" {
+  type    = string
+  default = "~/.ssh/id_rsa.pub"
+}
 
-# Storage Account with encryption and private endpoint
+# If you want to restrict SSH to a single CIDR (recommended), set here.
+# By default we restrict to the VNet internal prefix (no internet-wide 0.0.0.0/0).
+variable "ssh_source_cidr" {
+  type    = string
+  default = "10.0.0.0/16"
+}
+
+# -----------------------
+# Resource Group
+# -----------------------
+resource "azurerm_resource_group" "rg" {
+  name     = var.rg_name
+  location = var.location
+}
+
+# -----------------------
+# Log Analytics Workspace (central place for logs)
+# -----------------------
+resource "azurerm_log_analytics_workspace" "law" {
+  name                = "${var.rg_name}-law"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  sku                 = "PerGB2018"
+  retention_in_days   = 90
+}
+
+# -----------------------
+# Network Watcher (required for flow logs)
+# -----------------------
+resource "azurerm_network_watcher" "nw" {
+  name                = "${var.rg_name}-nw"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+# -----------------------
+# Virtual Network & Subnet
+# -----------------------
+resource "azurerm_virtual_network" "vnet" {
+  name                = "${var.rg_name}-vnet"
+  address_space       = ["10.0.0.0/16"]
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+resource "azurerm_subnet" "subnet" {
+  name                 = "pci-subnet"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = ["10.0.1.0/24"]
+}
+
+# -----------------------
+# Network Security Group (with descriptions)
+# -----------------------
+resource "azurerm_network_security_group" "nsg" {
+  name                = "${var.rg_name}-nsg"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+
+  security_rule {
+    name                       = "Allow-SSH-From-Internal"
+    priority                   = 1001
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = var.ssh_source_cidr
+    destination_address_prefix = "*"
+    description                = "Allow SSH from internal management CIDR only (no 0.0.0.0/0)"
+  }
+
+  security_rule {
+    name                       = "Deny-Internet-All"
+    priority                   = 4096
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "Internet"
+    destination_address_prefix = "*"
+    description                = "Default deny inbound from Internet"
+  }
+}
+
+# Associate NSG to subnet
+resource "azurerm_subnet_network_security_group_association" "subnet_nsg_assoc" {
+  subnet_id                 = azurerm_subnet.subnet.id
+  network_security_group_id = azurerm_network_security_group.nsg.id
+}
+
+# -----------------------
+# Flow Logs for NSG (network watcher)
+# -----------------------
+resource "azurerm_network_watcher_flow_log" "nsg_flow_log" {
+  network_watcher_name        = azurerm_network_watcher.nw.name
+  resource_group_name         = azurerm_resource_group.rg.name
+  location                    = azurerm_resource_group.rg.location
+  network_security_group_id   = azurerm_network_security_group.nsg.id
+  storage_account_id          = azurerm_storage_account.logging_sa.id
+  enabled                     = true
+  retention_policy {
+    enabled = true
+    days    = 30
+  }
+  flow_analytics_configuration {
+    network_watcher_flow_analytics_id = azurerm_log_analytics_workspace.law.id
+  }
+}
+
+# -----------------------
+# Storage Account (hardened)
+# -----------------------
 resource "azurerm_storage_account" "storage" {
-  name                     = "stcompliance2025"
-  resource_group_name      = "rg-compliance-example" # Replace with your resource group
-  location                 = "West Europe"
+  name                     = "pcidssstoragedemo" # must be globally unique; change if necessary
+  resource_group_name      = azurerm_resource_group.rg.name
+  location                 = azurerm_resource_group.rg.location
+  account_tier             = "Standard"
+  account_replication_type = "GRS"        # CKV_AZURE_206 remediation (change to ZRS if you prefer)
+  min_tls_version          = "TLS1_2"
+  allow_blob_public_access = false        # CKV_AZURE_190 / CKV_AZURE_59 remediation
+  public_network_access_enabled = false  # further restrict public network access
+  enable_https_traffic_only = true
+  is_hns_enabled           = false
+  # advanced threat protection & encryption are provided by platform by default; add CMK if required.
+}
+
+# Separate storage account for flow log storage (recommended)
+resource "azurerm_storage_account" "logging_sa" {
+  name                     = "pciloggingsa" # update to unique name
+  resource_group_name      = azurerm_resource_group.rg.name
+  location                 = azurerm_resource_group.rg.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
-  account_kind             = "StorageV2"
   min_tls_version          = "TLS1_2"
-
-  # Enable encryption for data at rest
+  allow_blob_public_access = false
+  public_network_access_enabled = false
   enable_https_traffic_only = true
+}
 
-  # Network rules to restrict public access
-  network_rules {
-    default_action             = "Deny"
-    ip_rules                   = []
-    virtual_network_subnet_ids = ["/subscriptions/<subscription-id>/resourceGroups/rg-compliance-example/providers/Microsoft.Network/virtualNetworks/vnet-compliance/subnets/subnet-compliance"] # Replace with subnet ID
-    bypass                     = ["AzureServices"]
+# -----------------------
+# Blob soft-delete (CKV2_AZURE_38)
+# -----------------------
+resource "azurerm_storage_account_blob_properties" "blob_props" {
+  storage_account_id = azurerm_storage_account.storage.id
+
+  delete_retention_policy {
+    days = 30
   }
 
-  # Tags for compliance tracking
-  tags = {
-    environment = "production"
-    compliance  = "pci-dss"
+  # Optional: versioning, CORS, etc.
+  is_versioning_enabled = true
+}
+
+# -----------------------
+# Diagnostic settings - Storage Queue logging (CKV_AZURE_33)
+# -----------------------
+resource "azurerm_monitor_diagnostic_setting" "storage_diagnostics" {
+  name                       = "${var.rg_name}-storage-diag"
+  target_resource_id         = azurerm_storage_account.storage.id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.law.id
+
+  # Storage logs
+  enabled_log {
+    category = "StorageRead"
+  }
+  enabled_log {
+    category = "StorageWrite"
+  }
+  enabled_log {
+    category = "StorageDelete"
+  }
+  # Additional storage metrics/events
+  metric {
+    category = "Transaction"
+    enabled  = true
+    retention_policy {
+      enabled = true
+      days    = 30
+    }
   }
 }
 
-# Private Endpoint for Storage Account
-resource "azurerm_private_endpoint" "storage_pe" {
-  name                = "pe-storage-compliance"
-  location            = azurerm_resource_group.example.location
-  resource_group_name = azurerm_resource_group.example.name
-  subnet_id           = azurerm_subnet.subnet.id
+# -----------------------
+# Public IP + NIC for VM (minimal)
+# -----------------------
+resource "azurerm_public_ip" "pip" {
+  name                = "${var.rg_name}-pip"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  allocation_method   = "Dynamic"
+  sku                 = "Basic"
+}
 
-  private_service_connection {
-    name                           = "psc-storage-compliance"
-    private_connection_resource_id = azurerm_storage_account.storage.id
-    subresource_names              = ["blob"]
-    is_manual_connection           = false
-  }
+resource "azurerm_network_interface" "nic" {
+  name                = "${var.rg_name}-nic"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
 
-  private_dns_zone_group {
-    name                 = "private-dns-zone-group"
-    private_dns_zone_ids = ["/subscriptions/<subscription-id>/resourceGroups/rg-compliance-example/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"] # Replace with DNS zone ID
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.subnet.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.pip.id
   }
 }
 
-# Virtual Machine with encryption and managed identity
+# -----------------------
+# Linux VM (no extensions) -> CKV_AZURE_50 remediation: we simply do not create extensions
+# -----------------------
 resource "azurerm_linux_virtual_machine" "vm" {
-  name                  = "vm-compliance"
-  location              = azurerm_resource_group.example.location
-  resource_group_name   = azurerm_resource_group.example.name
-  network_interface_ids = [azurerm_network_interface.vm_nic.id]
-  size                  = "Standard_DS1_v2"
+  name                            = "${var.rg_name}-vm"
+  resource_group_name             = azurerm_resource_group.rg.name
+  location                        = azurerm_resource_group.rg.location
+  size                            = "Standard_B1s"
+  admin_username                  = "azureuser"
+  network_interface_ids           = [azurerm_network_interface.nic.id]
+  disable_password_authentication = true
+  encryption_at_host_enabled      = true          # addresses VM encryption checks (CKV2 variants)
 
-  admin_username = "adminuser"
-  admin_password = "ComplexPassword123!" # Replace with secure password or use SSH key
-
-  # Disable password authentication for security
-  disable_password_authentication = false # Set to true and use ssh_key if preferred
-
-  # OS disk encryption
   os_disk {
     caching              = "ReadWrite"
-    storage_account_type = "Premium_LRS"
-    disk_encryption_set_id = azurerm_disk_encryption_set.des.id
+    storage_account_type = "Standard_LRS"
   }
 
   source_image_reference {
@@ -101,136 +265,103 @@ resource "azurerm_linux_virtual_machine" "vm" {
     version   = "latest"
   }
 
-  # Managed Identity for secure access
-  identity {
-    type = "SystemAssigned"
+  admin_ssh_key {
+    username   = "azureuser"
+    public_key = file(var.admin_ssh_pubkey_path)
   }
 
-  tags = {
-    environment = "production"
-    compliance  = "pci-dss"
-  }
+  # Note: Do NOT add 'extension' blocks here. Many checkov rules (CKV_AZURE_50)
+  # flag extensions. If you must use extensions, ensure justified and consider suppressing specific checks.
 }
 
-# Network Interface for VM
-resource "azurerm_network_interface" "vm_nic" {
-  name                = "nic-vm-compliance"
-  location            = azurerm_resource_group.example.location
-  resource_group_name = azurerm_resource_group.example.name
+# VM Diagnostics -> send metrics/logs to Log Analytics (prevents auditing gaps)
+resource "azurerm_monitor_diagnostic_setting" "vm_diagnostics" {
+  name                       = "${var.rg_name}-vm-diag"
+  target_resource_id         = azurerm_linux_virtual_machine.vm.id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.law.id
 
-  ip_configuration {
-    name                          = "internal"
-    subnet_id                     = azurerm_subnet.subnet.id
-    private_ip_address_allocation = "Dynamic"
+  metric {
+    category = "AllMetrics"
+    enabled  = true
+    retention_policy {
+      enabled = true
+      days    = 30
+    }
   }
-}
 
-# Disk Encryption Set for VM
-resource "azurerm_disk_encryption_set" "des" {
-  name                = "des-compliance"
-  resource_group_name = azurerm_resource_group.example.name
-  location            = azurerm_resource_group.example.location
-  key_vault_key_id    = azurerm_key_vault_key.key.id
-
-  identity {
-    type = "SystemAssigned"
+  log {
+    category = "Syslog"
+    enabled  = true
+  }
+  log {
+    category = "LinuxSyslog"
+    enabled  = true
   }
 }
 
-# Key Vault for encryption keys
-resource "azurerm_key_vault" "kv" {
-  name                        = "kv-compliance-2025"
-  location                    = azurerm_resource_group.example.location
-  resource_group_name         = azurerm_resource_group.example.name
-  enabled_for_disk_encryption = true
-  tenant_id                   = "<tenant-id>" # Replace with your tenant ID
-  soft_delete_retention_days  = 7
-  purge_protection_enabled    = true
+# -----------------------
+# IAM Example - RBAC Role Assignment (least privilege) - replace principal_id
+# -----------------------
+data "azurerm_subscription" "primary" {}
 
-  sku_name = "standard"
-
-  access_policy {
-    tenant_id = "<tenant-id>" # Replace with your tenant ID
-    object_id = "<object-id>" # Replace with your object ID (e.g., from managed identity)
-
-    key_permissions = [
-      "Get", "WrapKey", "UnwrapKey", "Create", "Delete", "Purge"
-    ]
-
-    secret_permissions = [
-      "Get", "Set", "Delete", "Purge"
-    ]
-  }
+resource "azurerm_role_assignment" "example_reader" {
+  scope                = azurerm_resource_group.rg.id
+  role_definition_name = "Reader"
+  principal_id         = "00000000-0000-0000-0000-000000000000" # Replace with real AAD object id
 }
 
-# Key Vault Key for encryption
-resource "azurerm_key_vault_key" "key" {
-  name         = "key-compliance"
-  key_vault_id = azurerm_key_vault.kv.id
-  key_type     = "RSA"
-  key_size     = 2048
-  key_opts     = ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
-
-  depends_on = [azurerm_key_vault.kv]
-}
-
-# Azure SQL Database with auditing and TLS
-resource "azurerm_mssql_server" "sql" {
-  name                         = "sql-compliance-2025"
-  resource_group_name          = azurerm_resource_group.example.name
-  location                     = azurerm_resource_group.example.location
+# -----------------------
+# SQL Server + Database (hardened)
+# -----------------------
+resource "azurerm_mssql_server" "sqlserver" {
+  name                         = "pcisqlserverdemo" # must be globally unique in rg scope
+  resource_group_name          = azurerm_resource_group.rg.name
+  location                     = azurerm_resource_group.rg.location
   version                      = "12.0"
-  administrator_login          = "sqladmin"
-  administrator_login_password = "ComplexPassword123!" # Replace with secure password
+  administrator_login          = "sqladminuser"
+  administrator_login_password = "StrongP@ssword123!"
 
-  # Enforce TLS and disable public access
-  public_network_access_enabled = false
-  tls_version                   = "1.2"
-
-  # Tags for compliance tracking
-  tags = {
-    environment = "production"
-    compliance  = "pci-dss"
-  }
+  public_network_access_enabled = false   # CKV_AZURE_113 remediation
+  minimum_tls_version           = "1.2"  # CKV_AZURE_52 remediation
 }
 
-resource "azurerm_mssql_database" "db" {
-  name           = "db-compliance"
-  server_id      = azurerm_mssql_server.sql.id
-  collation      = "SQL_Latin1_General_CP1_CI_AS"
-  license_type   = "LicenseIncluded"
-  max_size_gb    = 5
+resource "azurerm_mssql_database" "sqldb" {
+  name           = "pcidb"
+  server_id      = azurerm_mssql_server.sqlserver.id
   sku_name       = "S0"
+  collation      = "SQL_Latin1_General_CP1_CI_AS"
+  max_size_gb    = 10
+  zone_redundant = true     # CKV_AZURE_229 remediation (zone redundancy)
 
-  # Enable auditing for compliance
-  threat_detection_policy {
-    state                      = "Enabled"
-    retention_days             = 30
-    disabled_alerts            = []
-    email_account_admins       = true
-    email_addresses            = ["admin@domain.com"] # Replace with your email
-  }
-
-  # Transparent Data Encryption (TDE)
-  transparent_data_encryption_enabled = true
+  ledger_enabled = true     # CKV_AZURE_224 remediation (when DB type supports ledger)
 }
 
-# Private Endpoint for SQL Server
-resource "azurerm_private_endpoint" "sql_pe" {
-  name                = "pe-sql-compliance"
-  location            = azurerm_resource_group.example.location
-  resource_group_name = azurerm_resource_group.example.name
-  subnet_id           = azurerm_subnet.subnet.id
+# SQL Auditing -> send to Log Analytics
+resource "azurerm_mssql_server_extended_auditing_policy" "sql_audit" {
+  server_id                        = azurerm_mssql_server.sqlserver.id
+  storage_endpoint                  = azurerm_storage_account.logging_sa.primary_blob_endpoint
+  storage_account_access_key        = azurerm_storage_account.logging_sa.primary_access_key
+  retention_in_days                 = 30
+  audit_actions_and_groups          = ["BATCH_COMPLETED_GROUP", "SUCCESSFUL_DATABASE_AUTHENTICATION_GROUP", "FAILED_DATABASE_AUTHENTICATION_GROUP"]
+  is_azure_monitor_target_enabled   = true
+  log_analytics_workspace_id        = azurerm_log_analytics_workspace.law.id
+}
 
-  private_service_connection {
-    name                           = "psc-sql-compliance"
-    private_connection_resource_id = azurerm_mssql_server.sql.id
-    subresource_names              = ["sqlServer"]
-    is_manual_connection           = false
-  }
+# -----------------------
+# Outputs (useful for troubleshooting)
+# -----------------------
+output "resource_group" {
+  value = azurerm_resource_group.rg.name
+}
 
-  private_dns_zone_group {
-    name                 = "private-dns-zone-group-sql"
-    private_dns_zone_ids = ["/subscriptions/<subscription-id>/resourceGroups/rg-compliance-example/providers/Microsoft.Network/privateDnsZones/privatelink.database.windows.net"] # Replace with DNS zone ID
-  }
+output "storage_account" {
+  value = azurerm_storage_account.storage.name
+}
+
+output "vm_name" {
+  value = azurerm_linux_virtual_machine.vm.name
+}
+
+output "sql_server" {
+  value = azurerm_mssql_server.sqlserver.name
 }
