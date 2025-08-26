@@ -115,34 +115,41 @@ nsg_has_deny_all(nsg) {
 # =========================
 # Input shortcuts
 # =========================
-azure_storage_accounts = [r | r := input.resource_changes[_]; r.type == "azurerm_storage_account"]
+azure_storage_accounts[r] {
+  r := input.resource_changes[_]
+  r.type == "azurerm_storage_account"
+}
 
-azure_linux_vms = [r |
+azure_vms[r] {
   r := input.resource_changes[_]
   r.type == "azurerm_linux_virtual_machine"
-]
+}
 
-azure_windows_vms = [r |
+azure_vms[r] {
   r := input.resource_changes[_]
   r.type == "azurerm_windows_virtual_machine"
-]
+}
 
-azure_vms = azure_linux_vms ++ azure_windows_vms
-
-azure_user_identities = [r |
+azure_identities[r] {
   r := input.resource_changes[_]
   r.type == "azurerm_user"
-]
+}
 
-azure_ad_identities = [r |
+azure_identities[r] {
   r := input.resource_changes[_]
   r.type == "azurerm_ad_user"
-]
+}
 
-azure_identities = azure_user_identities ++ azure_ad_identities
+azure_nsgs[r] {
+  r := input.resource_changes[_]
+  r.type == "azurerm_network_security_group"
+}
 
-azure_nsgs = [r | r := input.resource_changes[_]; r.type == "azurerm_network_security_group"]
+azure_disks[r] {
+  r := input.resource_changes[_]
+  r.type == "azurerm_managed_disk"
+}
 
-azure_disks = [r | r := input.resource_changes[_]; r.type == "azurerm_managed_disk"]
-
-azure_resources = [r | r := input.resource_changes[_]]
+azure_resources[r] {
+  r := input.resource_changes[_]
+}
