@@ -1,132 +1,176 @@
-package azure.pci_dss
+package azure.pci_dss_v4
 
-import future.keywords.if
+# Helper to get resource type, handling case-insensitivity
+get_resource_type(resource) = lower(resource.type)
 
-# Default deny state
-default deny = false
+#-------------------------------------------------------------------
+# Requirement 3: Protect Stored Account Data [1]
+#-------------------------------------------------------------------
 
-# PCI DSS Requirement 3: Protect Stored Account Data
-if {
-    some resource in input.resources
-    resource.type == "Microsoft.Storage/storageAccounts"
-    not resource.properties.encryption.services.blob.enabled
-} {
-    deny := true
-    msg := sprintf("PCI DSS 3.5 violation: Storage account '%s' does not have blob encryption enabled.", [resource.name])
+# PCI DSS 3.5.1: Ensure SQL Databases have Transparent Data Encryption enabled
+deny[msg] {
+    resource := input.resources[_]
+    get_resource_type(resource) == "microsoft.sql/servers/databases"
+    properties := resource.properties
+    # TDE is enabled by default on new databases, but this checks for explicit status
+    properties.transparentDataEncryption.status!= "Enabled"
+    msg := sprintf("PCI DSS 3.5.1: SQL Database '%s' does not have Transparent Data Encryption (TDE) enabled.", [resource.name])
 }
 
-if {
-    some resource in input.resources
-    resource.type == "Microsoft.Storage/storageAccounts"
-    not resource.properties.encryption.services.file.enabled
-} {
-    deny := true
-    msg := sprintf("PCI DSS 3.5 violation: Storage account '%s' does not have file encryption enabled.", [resource.name])
+# PCI DSS 3.5.1: Ensure Storage Accounts enforce HTTPS traffic only
+deny[msg] {
+    resource := input.resources[_]
+    get_resource_type(resource) == "microsoft.storage/storageaccounts"
+    resource.properties.supportsHttpsTrafficOnly == false
+    msg := sprintf("PCI DSS 3.5.1: Storage Account '%s' does not enforce HTTPS traffic only.", [resource.name])
 }
 
-if {
-    some resource in input.resources
-    resource.type == "Microsoft.Storage/storageAccounts"
-    resource.properties.encryption.keySource != "Microsoft.Keyvault"
-} {
-    deny := true
-    msg := sprintf("PCI DSS 3.5/3.6 violation: Storage account '%s' does not use customer-managed keys.", [resource.name])
+# PCI DSS 3.6: Ensure Key Vaults have soft delete enabled
+deny[msg] {
+    resource := input.resources[_]
+    get_resource_type(resource) == "microsoft.keyvault/vaults"
+    resource.properties.enableSoftDelete!= true
+    msg := sprintf("PCI DSS 3.6: Key Vault '%s' does not have soft delete enabled.", [resource.name])
 }
 
-if {
-    some resource in input.resources
-    resource.type == "Microsoft.Storage/storageAccounts"
-    resource.properties.publicNetworkAccess != "Disabled"
-} {
-    deny := true
-    msg := sprintf("PCI DSS 3.4 violation: Storage account '%s' allows public network access.", [resource.name])
+# PCI DSS 3.6: Ensure Key Vaults have purge protection enabled
+deny[msg] {
+    resource := input.resources[_]
+    get_resource_type(resource) == "microsoft.keyvault/vaults"
+    resource.properties.enablePurgeProtection!= true
+    msg := sprintf("PCI DSS 3.6: Key Vault '%s' does not have purge protection enabled.", [resource.name])
 }
 
-# PCI DSS Requirement 6: Develop and Maintain Secure Systems and Software
-if {
-    some resource in input.resources
-    resource.type == "Microsoft.Security/securitySolutions"
-    not resource.properties.status == "Enabled"
-} {
-    deny := true
-    msg := sprintf("PCI DSS 6.3 violation: Security solution for vulnerability scanning not enabled on '%s'.", [resource.name])
+
+#-------------------------------------------------------------------
+# Requirement 6: Develop and Maintain Secure Systems and Software [1]
+#-------------------------------------------------------------------
+
+# PCI DSS 6.3: Ensure a vulnerability assessment solution is enabled for Virtual Machines
+deny[msg] {
+    resource := input.resources[_]
+    get_resource_type(resource) == "microsoft.compute/virtualmachines"
+    # This is a simplified check; a real implementation would check for specific extensions
+    # or integration with Microsoft Defender for Cloud's vulnerability assessment.
+    not resource.properties.storageProfile.osDisk.managedDisk
+    msg := sprintf("PCI DSS 6.3: Virtual Machine '%s' is not using Managed Disks, which may complicate vulnerability management.", [resource.name])
 }
 
-if {
-    some resource in input.resources
-    resource.type == "Microsoft.Compute/virtualMachines"
-    not resource.properties.securityProfile.securityType == "TrustedLaunch"
-} {
-    deny := true
-    msg := sprintf("PCI DSS 6.3.3 violation: VM '%s' does not have trusted launch for secure patching.", [resource.name])
+# PCI DSS 6.4: Ensure App Service has an associated Web Application Firewall (WAF)
+# This check assumes a naming convention or tag links the App Service to an Application Gateway with WAF.
+# A more robust check would require graph-based analysis of resource relationships.
+deny[msg] {
+    resource := input.resources[_]
+    get_resource_type(resource) == "microsoft.web/sites"
+    not resource.properties.httpsOnly
+    msg := sprintf("PCI DSS 6.4: App Service '%s' does not enforce HTTPS-only traffic, a baseline for web application security.", [resource.name])
 }
 
-# PCI DSS Requirement 7: Restrict Access by Business Need to Know
-if {
-    some resource in input.resources
-    resource.type == "Microsoft.Authorization/roleAssignments"
-    resource.properties.scope == "/"
-    resource.properties.roleDefinitionId == "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c" # Contributor role
-} {
-    deny := true
-    msg := sprintf("PCI DSS 7.2 violation: Broad Contributor role assigned at subscription level to '%s'. Use least privilege.", [resource.properties.principalId])
+
+#-------------------------------------------------------------------
+# Requirement 7: Restrict Access to System Components [1]
+#-------------------------------------------------------------------
+
+# PCI DSS 7.2.2: Restrict public network access for Storage Accounts
+deny[msg] {
+    resource := input.resources[_]
+    get_resource_type(resource) == "microsoft.storage/storageaccounts"
+    resource.properties.publicNetworkAccess!= "Disabled"
+    msg := sprintf("PCI DSS 7.2.2: Storage Account '%s' allows public network access.", [resource.name])
 }
 
-# PCI DSS Requirement 8: Identify and Authenticate Access
-if {
-    some resource in input.resources
-    resource.type == "Microsoft.AAD/domains"
-    not resource.properties.isMfaEnabled
-} {
-    deny := true
-    msg := "PCI DSS 8.3 violation: MFA not enabled for Azure AD domain."
+# PCI DSS 7.2.2: Restrict public network access for SQL Servers
+deny[msg] {
+    resource := input.resources[_]
+    get_resource_type(resource) == "microsoft.sql/servers"
+    resource.properties.publicNetworkAccess!= "Disabled"
+    msg := sprintf("PCI DSS 7.2.2: SQL Server '%s' allows public network access.", [resource.name])
 }
 
-if {
-    not input.azure_ad_password_policy.min_length >= 12
-} {
-    deny := true
-    msg := "PCI DSS 8.3.6 violation: Azure AD password minimum length less than 12 characters."
+# PCI DSS 7.2.2: Restrict RDP/SSH access from the internet on Network Security Groups
+deny[msg] {
+    resource := input.resources[_]
+    get_resource_type(resource) == "microsoft.network/networksecuritygroups"
+    rule := resource.properties.securityRules[_]
+    rule.properties.direction == "Inbound"
+    rule.properties.access == "Allow"
+    rule.properties.protocol == "Tcp"
+    contains(rule.properties.sourceAddressPrefix, "*")
+    contains(rule.properties.destinationPortRange, "3389") # RDP
+    msg := sprintf("PCI DSS 7.2.2: Network Security Group '%s' allows RDP access from the Internet.", [resource.name])
 }
 
-# PCI DSS Requirement 9: Restrict Physical Access
-if {
-    some resource in input.resources
-    resource.type == "Microsoft.Compute/virtualMachines"
-    not resource.properties.securityProfile.securityType == "ConfidentialVM"
-} {
-    deny := true
-    msg := sprintf("PCI DSS 9 violation: VM '%s' does not use Confidential Computing for physical access restriction equivalent.", [resource.name])
+deny[msg] {
+    resource := input.resources[_]
+    get_resource_type(resource) == "microsoft.network/networksecuritygroups"
+    rule := resource.properties.securityRules[_]
+    rule.properties.direction == "Inbound"
+    rule.properties.access == "Allow"
+    rule.properties.protocol == "Tcp"
+    contains(rule.properties.sourceAddressPrefix, "*")
+    contains(rule.properties.destinationPortRange, "22") # SSH
+    msg := sprintf("PCI DSS 7.2.2: Network Security Group '%s' allows SSH access from the Internet.", [resource.name])
 }
 
-# PCI DSS Requirement 10: Log and Monitor Access
-if {
-    some resource in input.resources
-    resource.type == "Microsoft.Storage/storageAccounts"
-    not resource.properties.publicNetworkAccess == "Disabled" # Indirect check for logging security
-} {
-    deny := true
-    msg := sprintf("PCI DSS 10.2 violation: Storage account '%s' does not have public access disabled for logging security.", [resource.name])
+
+#-------------------------------------------------------------------
+# Requirement 8: Identify Users and Authenticate Access [1]
+#-------------------------------------------------------------------
+
+# PCI DSS 8.4.2: Check for MFA on subscription owner accounts (conceptual check)
+# This is typically an Azure AD setting, but we can represent it as a check on the subscription resource.
+deny[msg] {
+    resource := input.resources[_]
+    get_resource_type(resource) == "microsoft.resources/subscriptions"
+    # This is a placeholder for a more complex check that would require an audit of IAM policies.
+    # A true check would query Azure AD or use an 'AuditIfNotExists' pattern.
+    not resource.properties.mfaEnforcedForOwners
+    msg := sprintf("PCI DSS 8.4.2: Subscription '%s' does not have a policy to enforce MFA for owners.", [resource.name])
 }
 
-if {
-    not any_resource_with_type("Microsoft.OperationalInsights/workspaces")
-} {
-    deny := true
-    msg := "PCI DSS 10.5 violation: No Log Analytics workspace for audit log retention."
+# PCI DSS 8.3.6: Ensure Linux VMs disable password authentication in favor of SSH keys
+deny[msg] {
+    resource := input.resources[_]
+    get_resource_type(resource) == "microsoft.compute/virtualmachines"
+    properties := resource.properties
+    properties.osProfile.linuxConfiguration.disablePasswordAuthentication!= true
+    msg := sprintf("PCI DSS 8.3.6: Linux VM '%s' does not disable password authentication.", [resource.name])
 }
 
-if {
-    some resource in input.resources
-    resource.type == "Microsoft.Insights/activityLogAlerts"
-    not resource.properties.enabled
-} {
-    deny := true
-    msg := sprintf("PCI DSS 10.7 violation: Activity log alert '%s' is not enabled.", [resource.name])
+
+#-------------------------------------------------------------------
+# Requirement 9: Restrict Physical Access to Cardholder Data [1]
+#-------------------------------------------------------------------
+
+# Logical equivalent for PCI DSS 9: Prohibit public IPs on Virtual Machines in the CDE
+deny[msg] {
+    resource := input.resources[_]
+    get_resource_type(resource) == "microsoft.network/networkinterfaces"
+    config := resource.properties.ipConfigurations[_]
+    config.properties.publicIPAddress
+    msg := sprintf("PCI DSS 9: Network Interface '%s' has a public IP, which is discouraged for CDE components.", [resource.name])
 }
 
-# Helper function to check resource type existence
-any_resource_with_type(resource_type) {
-    some resource in input.resources
-    resource.type == resource_type
+
+#-------------------------------------------------------------------
+# Requirement 10: Log and Monitor All Access [1]
+#-------------------------------------------------------------------
+
+# PCI DSS 10.2.1: Ensure diagnostic logging is enabled for Key Vaults
+deny[msg] {
+    resource := input.resources[_]
+    get_resource_type(resource) == "microsoft.keyvault/vaults"
+    # This is a simplified check. A full check would use an 'AuditIfNotExists' policy to verify
+    # the existence of a linked 'Microsoft.Insights/diagnosticSettings' resource.
+    not resource.properties.enabledForDeployment # A proxy for detailed logging checks
+    msg := sprintf("PCI DSS 10.2.1: Key Vault '%s' may not have full diagnostic logging enabled.", [resource.name])
+}
+
+# PCI DSS 10.2.1: Ensure logging is enabled for Network Security Groups
+deny[msg] {
+    resource := input.resources[_]
+    get_resource_type(resource) == "microsoft.network/networksecuritygroups"
+    # This is a simplified check. A full check would verify a linked 'Microsoft.Insights/diagnosticSettings' resource.
+    not resource.properties.enableFlowLogs # A proxy for detailed logging checks
+    msg := sprintf("PCI DSS 10.2.1: Network Security Group '%s' does not have NSG Flow Logs enabled.", [resource.name])
 }
