@@ -31,6 +31,29 @@ pipeline {
       }  
       }   
     }
+
+
+    stages {
+        stage('Collect Azure Data') {
+            steps {
+                sh 'bash scripts/collect_azure_data.sh'
+            }
+        }
+        stage('Validate PCI DSS') {
+            steps {
+                sh 'bash scripts/validate_pci.sh'
+            }
+        }
+    }
+    post {
+        always {
+            archiveArtifacts artifacts: 'output/*.json', fingerprint: true
+        }
+    }
+
+
+
+    
     stage('OPA Policy Validation') {
       steps {
         dir('IaC-Project/terraform') {
