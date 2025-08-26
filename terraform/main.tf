@@ -154,6 +154,7 @@ resource "azurerm_storage_account" "logging_sa" {
   account_replication_type = "GRS"
   min_tls_version          = "TLS1_2"
   public_network_access_enabled = false
+  https_traffic_only_enabled = true
   https_traffic_only_enabled = false
   shared_access_key_enabled = false
   queue_properties  {
@@ -197,4 +198,3 @@ resource "azurerm_role_assignment" "example_reader" {
   role_definition_name = "Reader"
   principal_id         = "00000000-0000-0000-0000-000000000000" # Replace with real AAD object id
 }
-
