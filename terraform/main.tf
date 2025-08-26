@@ -7,7 +7,6 @@ terraform {
   }
   required_version = ">= 1.3.0"
 }
-checkov:skip=CKV2_AZURE_1
 provider "azurerm" {
   features {}
 }
