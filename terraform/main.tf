@@ -160,6 +160,15 @@ resource "azurerm_storage_account" "storage" {
   allow_nested_items_to_be_public = false
   is_hns_enabled           = false
   local_user_enabled       = false
+  queue_properties  {
+  logging {
+        delete                = true
+        read                  = true
+        write                 = true
+        version               = "1.0"
+        retention_policy_days = 10
+    }
+  }
   blob_properties {
     delete_retention_policy {
       days = 7
