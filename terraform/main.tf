@@ -154,7 +154,7 @@ resource "azurerm_storage_account" "logging_sa" {
   account_replication_type = "GRS"
   min_tls_version          = "TLS1_2"
   public_network_access_enabled = false
-  enable_https_traffic_only = true
+  https_traffic_only_enabled = true
   https_traffic_only_enabled = false
   shared_access_key_enabled = false
   queue_properties  {
