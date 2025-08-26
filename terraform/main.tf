@@ -385,6 +385,11 @@ resource "azurerm_mssql_server" "sqlserver" {
 
   public_network_access_enabled = false   # CKV_AZURE_113 remediation
   minimum_tls_version           = "1.2"  # CKV_AZURE_52 remediation
+  azuread_administrator {
+    login_username = "example_admin"
+    object_id      = "xxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    tenant_id      = "xxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  }
 }
 
 resource "azurerm_mssql_database" "sqldb" {
