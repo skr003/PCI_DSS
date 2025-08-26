@@ -144,6 +144,20 @@ resource "azurerm_network_watcher_flow_log" "nsg_flow_log" {
     network_watcher_flow_analytics_id = azurerm_log_analytics_workspace.law.id
   }
 }
+resource "azurerm_private_endpoint" "logging_sa" {
+  name                 = "example_private_endpoint"
+  location             = azurerm_resource_group.rg.location
+  resource_group_name  = azurerm_resource_group.rg.name
+  subnet_id            = azurerm_subnet.logging_sa_endpoint.id
+
+  private_service_connection {
+    name                           = "logging_sa_endpoint_psc"
+    is_manual_connection           = false
+    private_connection_resource_id = azurerm_storage_account.logging_sa.id
+    subresource_names              = ["blob"]
+  }
+}
+
 
 # -----------------------
 # IAM Example - RBAC Role Assignment (least privilege) - replace principal_id
