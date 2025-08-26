@@ -160,6 +160,11 @@ resource "azurerm_storage_account" "storage" {
   allow_nested_items_to_be_public = false
   is_hns_enabled           = false
   local_user_enabled       = false
+  blob_properties {
+    delete_retention_policy {
+      days = 7
+    }
+  }
   # advanced threat protection & encryption are provided by platform by default; add CMK if required.
 }
 
@@ -174,6 +179,11 @@ resource "azurerm_storage_account" "logging_sa" {
   allow_blob_public_access = false
   public_network_access_enabled = false
   enable_https_traffic_only = true
+  blob_properties {
+    delete_retention_policy {
+      days = 7
+    }
+  }
 }
 
 # -----------------------
@@ -253,6 +263,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
   size                            = "Standard_B1s"
   admin_username                  = "azureuser"
   network_interface_ids           = [azurerm_network_interface.nic.id]
+  allow_extension_operations=false
   disable_password_authentication = true
   encryption_at_host_enabled      = true          # addresses VM encryption checks (CKV2 variants)
 
