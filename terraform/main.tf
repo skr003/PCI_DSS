@@ -384,7 +384,7 @@ resource "azurerm_mssql_server" "sqlserver" {
   version                      = "12.0"
   administrator_login          = "sqladminuser"
   administrator_login_password = "StrongP@ssword123!"
-
+  retention_in_days            = 100
   public_network_access_enabled = false   # CKV_AZURE_113 remediation
   minimum_tls_version           = "1.2"  # CKV_AZURE_52 remediation
   azuread_administrator {
