@@ -69,10 +69,5 @@ pipeline {
       }
       }  
     }
-    stage('Deploy to Azure') {
-      steps {
-         // sh 'terraform apply tfplan'
-      }
-    }
   }
 }
