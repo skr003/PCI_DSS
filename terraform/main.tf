@@ -179,6 +179,15 @@ resource "azurerm_storage_account" "logging_sa" {
   allow_blob_public_access = false
   public_network_access_enabled = false
   enable_https_traffic_only = true
+  queue_properties  {
+  logging {
+        delete                = true
+        read                  = true
+        write                 = true
+        version               = "1.0"
+        retention_policy_days = 10
+    }
+  }
   blob_properties {
     delete_retention_policy {
       days = 7
