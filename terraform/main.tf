@@ -173,8 +173,8 @@ resource "azurerm_storage_account" "storage" {
       days = 7
     }
   }
-  allow_blob_public_access = false
-  enable_https_traffic_only = true
+  allow_nested_items_to_be_public = false
+  https_traffic_only_enabled = true
   # advanced threat protection & encryption are provided by platform by default; add CMK if required.
 }
 
