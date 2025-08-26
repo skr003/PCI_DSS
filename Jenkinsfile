@@ -48,13 +48,10 @@ pipeline {
     
     stage('OPA Policy Validation') {
       steps {
-        dir('IaC-Project/terraform') {
      //   sh 'opa eval --format pretty --data ../opa/policy.rego --input tfplan.json "data.policies.allow"'  
           sh 'pwd'
           sh 'ls'
           sh 'opa eval --input output/azure.json --data poliy/azure/pci_dss.rego "data.pci_dss.deny"'
-
-      }
       }  
     }
     stage('Approve or Reject Deployment') {
