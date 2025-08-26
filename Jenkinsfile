@@ -46,6 +46,8 @@ pipeline {
           sh 'pwd'
           sh 'ls'
           sh 'opa eval --input output/azure.json --data policy/azure/pci_dss.rego "data.pci_dss.deny"'
+          sh 'opa eval --input output/azure.json --data policy/azure/pci_dss.rego "data.azure.pci_dss.allow"'
+
       }  
     }
 
