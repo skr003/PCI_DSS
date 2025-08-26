@@ -133,7 +133,7 @@ resource "azurerm_network_watcher_flow_log" "nsg_flow_log" {
   resource_group_name         = azurerm_resource_group.rg.name
   location                    = azurerm_resource_group.rg.location
   network_security_group_id   = azurerm_network_security_group.nsg.id
-#  storage_account_id          = azurerm_storage_account.logging_sa.id
+  storage_account_id          = azurerm_storage_account.logging_sa.id
   enabled                     = true
   allow_nested_items_to_be_public = false
   retention_policy {
