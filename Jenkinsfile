@@ -8,8 +8,7 @@ pipeline {
     }
     stage('IaC Static Analysis') {
       steps {
-              sh 'checkov -d terraform --skip-check CKV2_AZURE_1 || true'
-            //  sh 'tfsec terraform || true'
+              sh 'checkov -d terraform || true'
       }
     }
     stage('Terraform Init & Plan') {
