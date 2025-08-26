@@ -144,6 +144,35 @@ resource "azurerm_network_watcher_flow_log" "nsg_flow_log" {
     network_watcher_flow_analytics_id = azurerm_log_analytics_workspace.law.id
   }
 }
+
+# Separate storage account for flow log storage (recommended)
+resource "azurerm_storage_account" "logging_sa" {
+  name                     = "pciloggingsa" # update to unique name
+  resource_group_name      = azurerm_resource_group.rg.name
+  location                 = azurerm_resource_group.rg.location
+  account_tier             = "Standard"
+  account_replication_type = "GRS"
+  min_tls_version          = "TLS1_2"
+  public_network_access_enabled = false
+  enable_https_traffic_only = true
+  https_traffic_only_enabled = false
+  shared_access_key_enabled = false
+  queue_properties  {
+  logging {
+        delete                = true
+        read                  = true
+        write                 = true
+        version               = "1.0"
+        retention_policy_days = 10
+    }
+  }
+  blob_properties {
+    delete_retention_policy {
+      days = 7
+    }
+  }
+}
+
 resource "azurerm_private_endpoint" "logging_sa" {
   name                 = "example_private_endpoint"
   location             = azurerm_resource_group.rg.location
