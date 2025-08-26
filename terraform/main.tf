@@ -152,10 +152,10 @@ resource "azurerm_storage_account" "storage" {
   resource_group_name      = azurerm_resource_group.rg.name
   location                 = azurerm_resource_group.rg.location
   account_tier             = "Standard"
-  account_replication_type = "GRS"        # CKV_AZURE_206 remediation (change to ZRS if you prefer)
+  account_replication_type = "GRS"
   min_tls_version          = "TLS1_2"
-  allow_blob_public_access = false        # CKV_AZURE_190 / CKV_AZURE_59 remediation
-  public_network_access_enabled = false  # further restrict public network access
+  allow_blob_public_access = false
+  public_network_access_enabled = false
   enable_https_traffic_only = true
   allow_nested_items_to_be_public = false
   is_hns_enabled           = false
