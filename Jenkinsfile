@@ -14,7 +14,7 @@ pipeline {
     }
     stage('Terraform Init & Plan') {
       steps {
-         dir('IaC-Project/terraform') {
+         dir('terraform') {
                 withCredentials([
                     string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
                     string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
