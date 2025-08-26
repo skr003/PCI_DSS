@@ -136,7 +136,7 @@ resource "azurerm_network_watcher_flow_log" "nsg_flow_log" {
   enabled                     = true
   retention_policy {
     enabled = true
-    days    = 30
+    days    = 100
   }
   flow_analytics_configuration {
     network_watcher_flow_analytics_id = azurerm_log_analytics_workspace.law.id
