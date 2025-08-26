@@ -161,15 +161,6 @@ resource "azurerm_storage_account" "storage" {
   enable_https_traffic_only = true
   is_hns_enabled           = false
   local_user_enabled       = false
-  queue_properties  {
-    logging {
-        delete                = true
-        read                  = true
-        write                 = true
-        version               = "1.0"
-        retention_policy_days = 10
-    }
-  }
   # advanced threat protection & encryption are provided by platform by default; add CMK if required.
 }
 
