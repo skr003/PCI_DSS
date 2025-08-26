@@ -8,7 +8,6 @@ pipeline {
     }
     stage('IaC Static Analysis') {
       steps {
-              sh '/usr/local/bin/checkov -d .'
               sh 'checkov -d terraform || true'
               sh 'tfsec terraform || true'
       }
