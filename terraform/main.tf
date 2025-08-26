@@ -155,7 +155,6 @@ resource "azurerm_storage_account" "storage" {
   account_replication_type = "GRS"
   min_tls_version          = "TLS1_2"
   public_network_access_enabled = false
-  enable_https_traffic_only = true
   allow_nested_items_to_be_public = false
   is_hns_enabled           = false
   local_user_enabled       = false
@@ -175,6 +174,7 @@ resource "azurerm_storage_account" "storage" {
     }
   }
   allow_blob_public_access = false
+  enable_https_traffic_only = true
   # advanced threat protection & encryption are provided by platform by default; add CMK if required.
 }
 
