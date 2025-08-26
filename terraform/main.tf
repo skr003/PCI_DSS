@@ -157,6 +157,7 @@ resource "azurerm_storage_account" "storage" {
   allow_blob_public_access = false        # CKV_AZURE_190 / CKV_AZURE_59 remediation
   public_network_access_enabled = false  # further restrict public network access
   enable_https_traffic_only = true
+  allow_nested_items_to_be_public = false
   is_hns_enabled           = false
   local_user_enabled       = false
   # advanced threat protection & encryption are provided by platform by default; add CMK if required.
