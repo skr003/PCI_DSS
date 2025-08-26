@@ -29,8 +29,6 @@ pipeline {
              sh 'terraform plan -out=tfplan'
              sh 'terraform show -json tfplan > tfplan.json'
              archiveArtifacts artifacts: 'tfplan.json', followSymlinks: false
-           catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                    sh "exit 1"
       }  
       }   
     }
@@ -38,8 +36,6 @@ pipeline {
       steps {
         dir('IaC-Project/terraform') {
         sh 'opa eval --format pretty --data ../opa/policy.rego --input tfplan.json "data.policies.allow"'   
-          catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                    sh "exit 1"
       }
       }  
     }
@@ -53,8 +49,6 @@ pipeline {
           } else {
             echo "OPA policy approved the deployment."
           }
-          catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                    sh "exit 1"
         }
       }
       }  
@@ -62,8 +56,6 @@ pipeline {
     stage('Deploy to Azure') {
       steps {
         sh 'terraform apply tfplan'
-        catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                    sh "exit 1"
       }
     }
   }
