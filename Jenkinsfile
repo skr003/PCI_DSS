@@ -42,11 +42,7 @@ pipeline {
                 sh 'bash scripts/validate_pci.sh'
             }
         }
-    post {
-        always {
-            archiveArtifacts artifacts: 'output/*.json', fingerprint: true
-        }
-    }
+
 
 
 
