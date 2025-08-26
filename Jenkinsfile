@@ -56,7 +56,6 @@ pipeline {
     }
     stage('Approve or Reject Deployment') {
       steps {
-        dir('IaC-Project/opa') {
         script {
           def opaOutput = sh(script: 'opa eval --format pretty --data policy.rego --input ../terraform/tfplan.json "data.policies.allow"', returnStdout: true).trim()
           if (opaOutput != "true") {
@@ -65,7 +64,7 @@ pipeline {
             echo "OPA policy approved the deployment."
           }
         }
-      }
+
       }  
     }
   }
