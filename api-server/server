@@ -1,0 +1,22 @@
+from flask import Flask, jsonify
+import json, os
+
+app = Flask(__name__)
+
+@app.route("/query", methods=["POST"])
+def query():
+    path = os.path.join(os.path.dirname(__file__), "compliance.json")
+    with open(path) as f:
+        data = json.load(f)
+    return jsonify(data)
+
+@app.route("/search", methods=["POST"])
+def search():
+    return jsonify(["pci_dss_control", "status", "drift", "resource", "id"])
+
+@app.route("/annotations", methods=["POST"])
+def annotations():
+    return jsonify([])
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
