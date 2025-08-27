@@ -50,6 +50,29 @@ pipeline {
 
       }  
     }
-
+    stage('Upload Reports to Azure Storage') {
+      steps {
+        sh '''
+          # Set variables
+          STORAGE_ACCOUNT="abc"  # Replace if your account name is different
+          CONTAINER="reports"
+          
+          # Ensure container exists with public access (idempotent; won't fail if exists)
+          az storage container create --name $CONTAINER --account-name $STORAGE_ACCOUNT --public-access blob || true
+          
+          # Create build-specific directory (virtual folder)
+          BUILD_DIR="builds/$BUILD_NUMBER"
+          az storage blob directory create --container-name $CONTAINER --directory-path $BUILD_DIR --account-name $STORAGE_ACCOUNT || true
+          
+          # Upload to build-specific path
+          az storage blob upload --container-name $CONTAINER --name "$BUILD_DIR/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT
+          az storage blob upload --container-name $CONTAINER --name "$BUILD_DIR/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT
+          
+          # Upload to 'latest' path (overwrites previous latest)
+          az storage blob upload --container-name $CONTAINER --name "latest/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT
+          az storage blob upload --container-name $CONTAINER --name "latest/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT
+        '''
+      }
+    }
   }
 }
