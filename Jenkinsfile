@@ -57,13 +57,13 @@ pipeline {
         ]) {
           sh '''
             # Set variables
-            STORAGE_ACCOUNT="reportingpcidss25655"  # Corrected to your new storage account name
+            STORAGE_ACCOUNT="reportingpcidss25655"
             CONTAINER="reports"
             
             # Re-authenticate for this stage
             az login --service-principal --username "$AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID"
             
-            # Diagnostic: Test DNS resolution with correct account name
+            # Diagnostic: Test DNS resolution
             nslookup reportingpcidss25655.blob.core.windows.net || echo "DNS resolution failed"
             
             # Check if files exist
