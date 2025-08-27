@@ -50,26 +50,45 @@ pipeline {
     }
     stage('Upload Reports to Azure Storage') {
       steps {
-        sh '''
-          # Set variables
-          STORAGE_ACCOUNT="reporting-pcidss"  # Corrected to your storage account name
-          CONTAINER="reports"
-          
-          # Ensure container exists with public access (idempotent; won't fail if exists)
-          az storage container create --name $CONTAINER --account-name $STORAGE_ACCOUNT --public-access blob --auth-mode login || true
-          
-          # Define build-specific and latest paths
-          BUILD_DIR="builds/$BUILD_NUMBER"
-          LATEST_DIR="latest"
-          
-          # Upload to build-specific path (directories are created implicitly)
-          az storage blob upload --container-name $CONTAINER --name "$BUILD_DIR/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --auth-mode login
-          az storage blob upload --container-name $CONTAINER --name "$BUILD_DIR/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --auth-mode login
-          
-          # Upload to 'latest' path (overwrites previous latest)
-          az storage blob upload --container-name $CONTAINER --name "$LATEST_DIR/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --auth-mode login
-          az storage blob upload --container-name $CONTAINER --name "$LATEST_DIR/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --auth-mode login
-        '''
+        withCredentials([
+          string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
+          string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
+          string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
+        ]) {
+          sh '''
+            # Set variables
+            STORAGE_ACCOUNT="reporting-pcidss"
+            CONTAINER="reports"
+            
+            # Re-authenticate for this stage
+            az login --service-principal --username "$AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID"
+            
+            # Diagnostic: Test DNS resolution
+            nslookup reporting-pcidss.blob.core.windows.net || echo "DNS resolution failed"
+            
+            # Diagnostic: Test internet access
+            curl -I https://www.google.com || echo "Internet access failed"
+            
+            # Ensure container exists with public access
+            az storage container create --name $CONTAINER --account-name $STORAGE_ACCOUNT --public-access blob --auth-mode login || true
+            
+            # Define build-specific and latest paths
+            BUILD_DIR="builds/$BUILD_NUMBER"
+            LATEST_DIR="latest"
+            
+            # Check if files exist
+            if [ ! -f output/pci_dss_drifts.json ]; then echo "Error: pci_dss_drifts.json not found"; exit 1; fi
+            if [ ! -f output/azure.json ]; then echo "Error: azure.json not found"; exit 1; fi
+            
+            # Upload to build-specific path
+            az storage blob upload --container-name $CONTAINER --name "$BUILD_DIR/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --auth-mode login
+            az storage blob upload --container-name $CONTAINER --name "$BUILD_DIR/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --auth-mode login
+            
+            # Upload to 'latest' path
+            az storage blob upload --container-name $CONTAINER --name "$LATEST_DIR/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --auth-mode login
+            az storage blob upload --container-name $CONTAINER --name "$LATEST_DIR/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --auth-mode login
+          '''
+        }
       }
     }
   }
