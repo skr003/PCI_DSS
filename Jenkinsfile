@@ -51,13 +51,10 @@ pipeline {
     stage('Upload Reports to Azure Storage') {
       steps {
         sh '''
-          # Set variables
+          # Set variables - REPLACE WITH YOUR ACTUAL STORAGE KEY
           STORAGE_ACCOUNT="reportingpcidss25655"
           CONTAINER="reports"
-          STORAGE_ACCOUNT_KEY="YOUR_STORAGE_ACCOUNT_KEY_HERE"
-          
-          # Diagnostic: Test DNS resolution
-          nslookup $STORAGE_ACCOUNT.blob.core.windows.net || echo "DNS resolution failed"
+          STORAGE_ACCOUNT_KEY="pUsU+U4ZVzYx5jVJAyiEXeVIhgel/4iGxqYl+cY1WSJI5NKsvlbYN5Si9NXHr8TKQTB92BHvTH64+AStjLZLuQ=="
           
           # Check if files exist
           if [ ! -f output/pci_dss_drifts.json ]; then echo "Error: pci_dss_drifts.json not found"; exit 1; fi
