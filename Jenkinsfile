@@ -50,34 +50,27 @@ pipeline {
     }
     stage('Upload Reports to Azure Storage') {
       steps {
-        withCredentials([
-          string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
-          string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
-          string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
-          string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'AZURE_SUBSCRIPTION_ID')
-        ]) {
-          sh '''
-            # Login with service principal
-            az login --service-principal --username "$AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID"
-            az account set --subscription "$AZURE_SUBSCRIPTION_ID"
-            
-            # Set variables
-            STORAGE_ACCOUNT="reportingpcidss25655"
-            CONTAINER="reports"
-            
-            # Check if files exist
-            if [ ! -f output/pci_dss_drifts.json ]; then echo "Error: pci_dss_drifts.json not found"; exit 1; fi
-            if [ ! -f output/azure.json ]; then echo "Error: azure.json not found"; exit 1; fi
-            
-            # Upload to build-specific path using service principal auth
-            az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --auth-mode login
-            az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --auth-mode login
-            
-            # Upload to 'latest' path using service principal auth
-            az storage blob upload --container-name $CONTAINER --name "latest/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --auth-mode login
-            az storage blob upload --container-name $CONTAINER --name "latest/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --auth-mode login
-          '''
-        }
+        sh '''
+          # Set variables
+          STORAGE_ACCOUNT="reportingpcidss25655"
+          CONTAINER="reports"
+          STORAGE_ACCOUNT_KEY="YOUR_STORAGE_ACCOUNT_KEY_HERE"
+          
+          # Diagnostic: Test DNS resolution
+          nslookup $STORAGE_ACCOUNT.blob.core.windows.net || echo "DNS resolution failed"
+          
+          # Check if files exist
+          if [ ! -f output/pci_dss_drifts.json ]; then echo "Error: pci_dss_drifts.json not found"; exit 1; fi
+          if [ ! -f output/azure.json ]; then echo "Error: azure.json not found"; exit 1; fi
+          
+          # Upload to build-specific path
+          az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY"
+          az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY"
+          
+          # Upload to 'latest' path
+          az storage blob upload --container-name $CONTAINER --name "latest/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY"
+          az storage blob upload --container-name $CONTAINER --name "latest/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY"
+        '''
       }
     }
   }
