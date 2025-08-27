@@ -57,36 +57,26 @@ pipeline {
         ]) {
           sh '''
             # Set variables
-            STORAGE_ACCOUNT="reporting-pcidss"
+            STORAGE_ACCOUNT="reportingpcidss25655"  # Corrected to your new storage account name
             CONTAINER="reports"
             
             # Re-authenticate for this stage
             az login --service-principal --username "$AZURE_CLIENT_ID" --password "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID"
             
-            # Diagnostic: Test DNS resolution
-            nslookup reporting-pcidss.blob.core.windows.net || echo "DNS resolution failed"
-            
-            # Diagnostic: Test internet access
-            curl -I https://www.google.com || echo "Internet access failed"
-            
-            # Ensure container exists with public access
-            az storage container create --name $CONTAINER --account-name $STORAGE_ACCOUNT --public-access blob --auth-mode login || true
-            
-            # Define build-specific and latest paths
-            BUILD_DIR="builds/$BUILD_NUMBER"
-            LATEST_DIR="latest"
+            # Diagnostic: Test DNS resolution with correct account name
+            nslookup reportingpcidss25655.blob.core.windows.net || echo "DNS resolution failed"
             
             # Check if files exist
             if [ ! -f output/pci_dss_drifts.json ]; then echo "Error: pci_dss_drifts.json not found"; exit 1; fi
             if [ ! -f output/azure.json ]; then echo "Error: azure.json not found"; exit 1; fi
             
             # Upload to build-specific path
-            az storage blob upload --container-name $CONTAINER --name "$BUILD_DIR/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --auth-mode login
-            az storage blob upload --container-name $CONTAINER --name "$BUILD_DIR/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --auth-mode login
+            az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --auth-mode login
+            az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --auth-mode login
             
             # Upload to 'latest' path
-            az storage blob upload --container-name $CONTAINER --name "$LATEST_DIR/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --auth-mode login
-            az storage blob upload --container-name $CONTAINER --name "$LATEST_DIR/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --auth-mode login
+            az storage blob upload --container-name $CONTAINER --name "latest/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --auth-mode login
+            az storage blob upload --container-name $CONTAINER --name "latest/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --auth-mode login
           '''
         }
       }
