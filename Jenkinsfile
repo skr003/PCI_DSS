@@ -54,7 +54,7 @@ pipeline {
           string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
           string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
           string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
-          string(credentialsId: 'STORAGE_ACCOUNT_KEY', variable: 'STORAGE_ACCOUNT_KEY', defaultValue: 'pUsU+U4ZVzYx5jVJAyiEXeVIhgel/4iGxqYl+cY1WSJI5NKsvlbYN5Si9NXHr8TKQTB92BHvTH64+AStjLZLuQ==')
+          string(credentialsId: 'STORAGE_ACCOUNT_KEY', variable: 'STORAGE_ACCOUNT_KEY')
         ]) {
           sh '''
             # Set variables
