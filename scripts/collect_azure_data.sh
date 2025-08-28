@@ -7,6 +7,14 @@ mkdir -p $OUTPUT_DIR
 echo "[*] Collecting Azure VM details..."
 az vm list -o json > $OUTPUT_DIR/vms.json
 # az vm list --query '[].{name:name,location:location,os:storageProfile.osDisk.osType}' -o json > $OUTPUT_DIR/vms.json
+echo "[*] Collecting Azure VM details with diagnostics..."
+az vm list --query '[].{name:name,location:location,os:storageProfile.osDisk.osType}' -o json > $OUTPUT_DIR/vms.json
+
+# Collect VM boot diagnostics (10.1, 10.6)
+az vm list --query '[].{name:name, diagnostics:diagnosticsProfile.bootDiagnostics}' -o json > $OUTPUT_DIR/vm_diagnostics.json
+
+echo "[*] Collecting Azure Storage Account details..."
+az storage account list --query '[].{name:name,httpsOnly:enableHttpsTrafficOnly,publicAccess:allowBlobPublicAccess,immutability:immutableStorageWithVersioning}' -o json > $OUTPUT_DIR/storage.json
 
 echo "[*] Collecting Azure Storage Account details..."
 az storage account list --query '[].{name:name,httpsOnly:enableHttpsTrafficOnly,publicAccess:allowBlobPublicAccess}' -o json > $OUTPUT_DIR/storage.json
