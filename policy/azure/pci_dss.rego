@@ -101,18 +101,11 @@ deny[msg] if {
   msg := sprintf("PCI DSS Req 10 Violation: Resource %s missing diagnostic logging.", [res.name])
 }
 
-deny[msg] if {
+pass[msg] if {
   some res
   azure_resources[res]
   res.values.diagnostics_enabled
   msg := sprintf("PCI DSS Req 10 Passed: Resource %s has diagnostic logging.", [res.name])
-}
-
-pass[msg] if {
-  some res
-  azure_resources[res]
-  not res.values.diagnostics_enabled
-  msg := sprintf("PCI DSS Req 10 Failed: Resource %s doesn't have diagnostic logging enabled.", [res.name])
 }
 
 ##############################
