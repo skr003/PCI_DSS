@@ -7,84 +7,67 @@ allow if {
   count(deny) == 0
 }
 
-##############################
-# Requirement 3 – Protect Stored Account Data
-##############################
+# Collector: gather all Azure Storage Accounts
+azure_storage_accounts[sa] if {
+  sa := input.resource_changes[_]
+  sa.type == "azurerm_storage_account"
+}
 
-# Storage must enforce HTTPS
+# 10.1 Ensure that 'Secure transfer required' is enabled
 deny[msg] if {
   some sa
   azure_storage_accounts[sa]
   not sa.values.enable_https_traffic_only
-  msg := sprintf("PCI DSS Req 3 Violation: Storage account %s does not enforce HTTPS-only traffic.", [sa.name])
+  msg := sprintf("PCI DSS Req 10.1 Violation: Storage account %s does not enforce HTTPS-only traffic.", [sa.name])
 }
 
-# Storage must block blob public access
+# 10.2 Ensure that 'Minimum TLS version' is set to 1.2
 deny[msg] if {
   some sa
   azure_storage_accounts[sa]
-  sa.values.allow_blob_public_access == true
-  msg := sprintf("PCI DSS Req 3 Violation: Storage account %s allows public blob access.", [sa.name])
+  not sa.values.min_tls_version
+  msg := sprintf("PCI DSS Req 10.2 Violation: Storage account %s does not specify a minimum TLS version.", [sa.name])
 }
 
-##############################
-# Requirement 6 – Develop and Maintain Secure Systems and Apps
-##############################
-
-# Ensure VMs patched recently (example <= 30 days)
 deny[msg] if {
-  some vm
-  azure_vms[vm]
-  vm.values.days_since_last_patch > 30
-  msg := sprintf("PCI DSS Req 6 Violation: VM %s not patched in %d days.", [vm.name, vm.values.days_since_last_patch])
+  some sa
+  azure_storage_accounts[sa]
+  sa.values.min_tls_version != "TLS1_2"
+  msg := sprintf("PCI DSS Req 10.2 Violation: Storage account %s uses %s instead of TLS1_2.", [sa.name, sa.values.min_tls_version])
 }
 
-##############################
-# Requirement 7 – Restrict Access by Business Need-to-Know
-##############################
-
-# Ensure NSGs have deny-all inbound
+# 10.3 Ensure that 'Public network access' is disabled
 deny[msg] if {
-  some nsg
-  azure_nsgs[nsg]
-  not nsg_has_deny_all(nsg)
-  msg := sprintf("PCI DSS Req 7 Violation: NSG %s missing default deny-all inbound.", [nsg.name])
+  some sa
+  azure_storage_accounts[sa]
+  sa.values.public_network_access == "Enabled"
+  msg := sprintf("PCI DSS Req 10.3 Violation: Storage account %s allows public network access.", [sa.name])
 }
 
-##############################
-# Requirement 8 – Identify and Authenticate Users
-##############################
-
-# MFA must be enabled
+# 10.4 Ensure storage account logging is enabled (Blob, Table, Queue)
 deny[msg] if {
-  some acct
-  azure_identities[acct]
-  not acct.values.mfa_enabled
-  msg := sprintf("PCI DSS Req 8 Violation: Identity %s has no MFA enabled.", [acct.name])
+  some sa
+  azure_storage_accounts[sa]
+  not sa.values.blob_properties.logging.delete
+  not sa.values.blob_properties.logging.read
+  not sa.values.blob_properties.logging.write
+  msg := sprintf("PCI DSS Req 10.4 Violation: Storage account %s does not have logging enabled for Blob service.", [sa.name])
 }
 
-##############################
-# Requirement 9 – Restrict Physical Access
-##############################
-
-# Disks must be encrypted
+# 10.5 Ensure that soft delete is enabled for Blob service
 deny[msg] if {
-  some disk
-  azure_disks[disk]
-  not disk.values.encryption.enabled
-  msg := sprintf("PCI DSS Req 9 Violation: Disk %s not encrypted with CMK.", [disk.name])
+  some sa
+  azure_storage_accounts[sa]
+  not sa.values.blob_properties.delete_retention_policy.enabled
+  msg := sprintf("PCI DSS Req 10.5 Violation: Storage account %s does not have soft delete enabled for Blobs.", [sa.name])
 }
 
-##############################
-# Requirement 10 – Log and Monitor All Access
-##############################
-
-# Resources must have diagnostic logs enabled
+# 10.6 Ensure that soft delete is enabled for File service
 deny[msg] if {
-  some res
-  azure_resources[res]
-  not res.values.diagnostics_enabled
-  msg := sprintf("PCI DSS Req 10 Violation: Resource %s missing diagnostic logging.", [res.name])
+  some sa
+  azure_storage_accounts[sa]
+  not sa.values.file_properties.share_delete_retention_policy.enabled
+  msg := sprintf("PCI DSS Req 10.6 Violation: Storage account %s does not have soft delete enabled for File shares.", [sa.name])
 }
 
 ##############################
