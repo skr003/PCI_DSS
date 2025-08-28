@@ -19,6 +19,13 @@ deny[msg] if {
   msg := sprintf("PCI DSS Req 3 Violation: Storage account %s does not enforce HTTPS-only traffic.", [sa.name])
 }
 
+pass[msg] if {
+  some sa
+  azure_storage_accounts[sa]
+  sa.values.enable_https_traffic_only
+  msg := sprintf("PCI DSS Req 3 Passed: Storage account %s enforces HTTPS-only traffic.", [sa.name])
+}
+
 # Storage must block blob public access
 deny[msg] if {
   some sa
