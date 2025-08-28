@@ -115,30 +115,30 @@ package azure.pci_dss.req10
 
 # 10.1 Processes and mechanisms defined and documented
 deny[msg] if {
-  some r
+  some res
   azure_resources[r]
-  not r.values.diagnostics_profile.boot_diagnostics.enabled
-  msg := sprintf("PCI DSS Req 10.1 Violation: Resource %s missing defined diagnostic logging.", [r.name])
+  not res.values.diagnostics_profile.boot_diagnostics.enabled
+  msg := sprintf("PCI DSS Req 10.1 Violation: Resource %s missing defined diagnostic logging.", [res.name])
 }
 pass[msg] if {
-  some r
+  some res
   azure_resources[r]
-  r.values.diagnostics_profile.boot_diagnostics.enabled
-  msg := sprintf("PCI DSS Req 10.1 Violation: Resource %s missing defined diagnostic logging.", [r.name])
+  res.values.diagnostics_profile.boot_diagnostics.enabled
+  msg := sprintf("PCI DSS Req 10.1 Violation: Resource %s missing defined diagnostic logging.", [res.name])
 }
 
 # 10.2 Audit logs implemented
 deny[msg] if {
-  some r
+  some res
   azure_resources[r]
-  not r.values.audit_logs_enabled
-  msg := sprintf("PCI DSS Req 10.2 Violation: Resource %s does not have audit logs enabled.", [r.name])
+  not res.values.audit_logs_enabled
+  msg := sprintf("PCI DSS Req 10.2 Violation: Resource %s does not have audit logs enabled.", [res.name])
 }
 pass[msg] if {
-  some r
+  some res
   azure_resources[r]
-  r.values.audit_logs_enabled
-  msg := sprintf("PCI DSS Req 10.2 Violation: Resource %s does not have audit logs enabled.", [r.name])
+  res.values.audit_logs_enabled
+  msg := sprintf("PCI DSS Req 10.2 Violation: Resource %s does not have audit logs enabled.", [res.name])
 }
 
 # 10.3 Audit logs protected from destruction/modification
