@@ -34,6 +34,13 @@ deny[msg] if {
   msg := sprintf("PCI DSS Req 3 Violation: Storage account %s allows public blob access.", [sa.name])
 }
 
+pass[msg] if {
+  some sa
+  azure_storage_accounts[sa]
+  sa.values.allow_blob_public_access == false
+  msg := sprintf("PCI DSS Req 3 Violation: Storage account %s allows public blob access.", [sa.name])
+}
+
 ##############################
 # Requirement 6 â€“ Develop and Maintain Secure Systems and Apps
 ##############################
@@ -92,6 +99,13 @@ deny[msg] if {
   azure_resources[res]
   not res.values.diagnostics_enabled
   msg := sprintf("PCI DSS Req 10 Violation: Resource %s missing diagnostic logging.", [res.name])
+}
+
+deny[msg] if {
+  some res
+  azure_resources[res]
+  res.values.diagnostics_enabled
+  msg := sprintf("PCI DSS Req 10 Passed: Resource %s has diagnostic logging.", [res.name])
 }
 
 ##############################
