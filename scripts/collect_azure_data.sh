@@ -6,7 +6,7 @@ mkdir -p $OUTPUT_DIR
 
 echo "[*] Collecting Azure VM details..."
 az vm list -o json > $OUTPUT_DIR/vms.json
-az vm list --query '[].{name:name,location:location,os:storageProfile.osDisk.osType}' -o json > $OUTPUT_DIR/vms.json
+az vm list --query '[].{name:name,location:location,os:storageProfile.osDisk.osType}' -o json >> $OUTPUT_DIR/vms.json
 az vm list --query '[].{name:name, diagnostics:diagnosticsProfile.bootDiagnostics}' -o json > $OUTPUT_DIR/vm_diagnostics.json
 
 for id in $(az vm list --query "[].id" -o tsv); do
