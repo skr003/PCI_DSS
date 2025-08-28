@@ -61,12 +61,12 @@ pipeline {
           if [ ! -f output/azure.json ]; then echo "Error: azure.json not found"; exit 1; fi
           
           # Upload to build-specific path
-          az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY"
-          az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY"
+          az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY" --overwrite
+          az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY" --overwrite
           
           # Upload to 'latest' path
-          az storage blob upload --container-name $CONTAINER --name "latest/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY"
-          az storage blob upload --container-name $CONTAINER --name "latest/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY"
+          az storage blob upload --container-name $CONTAINER --name "latest/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY" --overwrite
+          az storage blob upload --container-name $CONTAINER --name "latest/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY" --overwrite
         '''
       }
     }
