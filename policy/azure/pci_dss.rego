@@ -108,6 +108,42 @@ deny[msg] if {
   msg := sprintf("PCI DSS Req 10 Passed: Resource %s has diagnostic logging.", [res.name])
 }
 
+#############################################
+
+deny[msg] if {
+  some res
+  azure_resources[res]
+  res.values.diagnostics_enabled
+  msg := sprintf("PCI DSS Req 10.1 Passed: Resource %s has diagnostic logging.", [res.name])
+}
+
+# Compliant (pass)
+pass[msg] if {
+  some res
+  azure_resources[res]
+  not res.values.diagnostics_enabled
+  msg := sprintf("PCI DSS Req 10.2 Passed: Resource %s has diagnostic logging enabled.", [res.name])
+}
+
+
+# Violation (fail)
+deny[msg] if {
+  some res
+  azure_resources[res]
+  not res.values.diagnostics_profile.boot_diagnostics.enabled
+  msg := sprintf("PCI DSS Req 10.3 Violation: Resource %s missing diagnostic logging.", [res.name])
+}
+
+# Compliant (pass)
+pass[msg] if {
+  some res
+  azure_resources[res]
+  res.values.diagnostics_profile.boot_diagnostics.enabled
+  msg := sprintf("PCI DSS Req 10.4 Passed: Resource %s has diagnostic logging enabled.", [res.name])
+}
+
+
+
 ##############################
 # Helper: NSG deny-all check
 ##############################
