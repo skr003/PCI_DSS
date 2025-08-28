@@ -17,9 +17,7 @@ for id in $(az vm list --query "[].id" -o tsv); do
 done
 
 echo "[*] Collecting Azure Storage Account details..."
-az storage account list --query '[].{name:name,httpsOnly:enableHttpsTrafficOnly,publicAccess:allowBlobPublicAccess,immutability:immutableStorageWithVersioning}' -o json > $OUTPUT_DIR/storage.json
-az storage account list --query '[].{name:name,httpsOnly:enableHttpsTrafficOnly,publicAccess:allowBlobPublicAccess}' -o json > $OUTPUT_DIR/storage.json
-az storage account list --query '[].{id:id,name:name,resourceGroup:resourceGroup,location:location}' -o json > $OUTPUT_DIR/storage.json
+az storage account list --query '[].{id:id,resourceGroup:resourceGroup,location:location,httpsOnly:enableHttpsTrafficOnly,publicAccess:allowBlobPublicAccess,immutability:immutableStorageWithVersioning}' -o json > $OUTPUT_DIR/storage.json
 
 # For each storage account, collect blob service properties (soft delete info)
 for rg in $(az storage account list --query '[].resourceGroup' -o tsv); do
