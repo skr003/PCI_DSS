@@ -33,6 +33,19 @@ for rg in $(az storage account list --query '[].resourceGroup' -o tsv); do
   done
 done
 
+echo "[*] Collecting Metric Alerts for all VMs..."
+echo "[]" > $OUTPUT_DIR/alerts.json   # start with empty JSON array
+for id in $(az vm list --query "[].id" -o tsv); do
+  echo "Checking alerts for: $id"
+  az monitor metrics alert list \
+    --query "[?contains(scopes, '$id')].{name:name,enabled:enabled,severity:severity,scopes:scopes}" \
+    -o json | jq -s 'add' \
+    | jq -s '.[0] + .[1]' $OUTPUT_DIR/alerts.json - \
+    > $OUTPUT_DIR/alerts.tmp.json
+  mv $OUTPUT_DIR/alerts.tmp.json $OUTPUT_DIR/alerts.json
+done
+
+
 echo "[*] Merging into tfplan.json style input..."
 jq -n \
   --argfile vms $OUTPUT_DIR/vms.json \
