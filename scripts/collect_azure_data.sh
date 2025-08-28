@@ -9,7 +9,7 @@ az vm list -o json > $OUTPUT_DIR/vms.json
 az vm list --query '[].{name:name,location:location,os:storageProfile.osDisk.osType}' -o json > $OUTPUT_DIR/vms.json
 az vm list --query '[].{name:name, diagnostics:diagnosticsProfile.bootDiagnostics}' -o json > $OUTPUT_DIR/vm_diagnostics.json
 
-for id in $(az resource list --query "[].id" -o tsv); do
+for id in $(az vm list --query "[].id" -o tsv); do
   echo "Checking diagnostics for: $id"
   az monitor diagnostic-settings list \
     --resource $id \
