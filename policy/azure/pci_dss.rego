@@ -107,6 +107,109 @@ pass[msg] if {
   res.values.diagnostics_enabled
   msg := sprintf("PCI DSS Req 10 Passed: Resource %s has diagnostic logging.", [res.name])
 }
+package azure.pci_dss.req10
+
+#######################################
+# Requirement 10: Log and Monitor All Access
+#######################################
+
+# 10.1 Processes and mechanisms defined and documented
+deny[msg] if {
+  some r
+  azure_resources[r]
+  not r.values.diagnostics_profile.boot_diagnostics.enabled
+  msg := sprintf("PCI DSS Req 10.1 Violation: Resource %s missing defined diagnostic logging.", [r.name])
+}
+pass[msg] if {
+  some r
+  azure_resources[r]
+  r.values.diagnostics_profile.boot_diagnostics.enabled
+  msg := sprintf("PCI DSS Req 10.1 Violation: Resource %s missing defined diagnostic logging.", [r.name])
+}
+
+# 10.2 Audit logs implemented
+deny[msg] if {
+  some r
+  azure_resources[r]
+  not r.values.audit_logs_enabled
+  msg := sprintf("PCI DSS Req 10.2 Violation: Resource %s does not have audit logs enabled.", [r.name])
+}
+pass[msg] if {
+  some r
+  azure_resources[r]
+  r.values.audit_logs_enabled
+  msg := sprintf("PCI DSS Req 10.2 Violation: Resource %s does not have audit logs enabled.", [r.name])
+}
+
+# 10.3 Audit logs protected from destruction/modification
+deny[msg] if {
+  some sa
+  azure_storage_accounts[sa]
+  not sa.values.immutable_storage_enabled
+  msg := sprintf("PCI DSS Req 10.3 Violation: Storage account %s does not protect logs with immutability.", [sa.name])
+}
+pass[msg] if {
+  some sa
+  azure_storage_accounts[sa]
+  sa.values.immutable_storage_enabled
+  msg := sprintf("PCI DSS Req 10.3 Violation: Storage account %s does not protect logs with immutability.", [sa.name])
+}
+
+# 10.4 Audit logs reviewed
+deny[msg] if {
+  some ws
+  azure_log_analytics_workspaces[ws]
+  not ws.values.diagnostic_rules_configured
+  msg := sprintf("PCI DSS Req 10.4 Violation: Log Analytics workspace %s does not have log review rules configured.", [ws.name])
+}
+pass[msg] if {
+  some ws
+  azure_log_analytics_workspaces[ws]
+  ws.values.diagnostic_rules_configured
+  msg := sprintf("PCI DSS Req 10.4 Violation: Log Analytics workspace %s does not have log review rules configured.", [ws.name])
+}
+
+# 10.5 Audit log history retention
+deny[msg] if {
+  some ws
+  azure_log_analytics_workspaces[ws]
+  ws.values.retention_in_days < 365
+  msg := sprintf("PCI DSS Req 10.5 Violation: Log Analytics workspace %s retains logs for less than 1 year.", [ws.name])
+}
+pass[msg] if {
+  some ws
+  azure_log_analytics_workspaces[ws]
+  ws.values.retention_in_days > 365
+  msg := sprintf("PCI DSS Req 10.5 Violation: Log Analytics workspace %s retains logs for less than 1 year.", [ws.name])
+}
+
+# 10.6 Time synchronization
+deny[msg] if {
+  some vm
+  azure_virtual_machines[vm]
+  not vm.values.time_sync_enabled
+  msg := sprintf("PCI DSS Req 10.6 Violation: VM %s does not have time synchronization enabled.", [vm.name])
+}
+pass[msg] if {
+  some vm
+  azure_virtual_machines[vm]
+  vm.values.time_sync_enabled
+  msg := sprintf("PCI DSS Req 10.6 Violation: VM %s does not have time synchronization enabled.", [vm.name])
+}
+
+# 10.7 Detection and reporting of failures
+deny[msg] if {
+  some ms
+  azure_monitor_alerts[ms]
+  not ms.values.critical_alerting_configured
+  msg := sprintf("PCI DSS Req 10.7 Violation: Monitoring system %s is not configured to detect/report control failures.", [ms.name])
+}
+pass[msg] if {
+  some ms
+  azure_monitor_alerts[ms]
+  ms.values.critical_alerting_configured
+  msg := sprintf("PCI DSS Req 10.7 Violation: Monitoring system %s is not configured to detect/report control failures.", [ms.name])
+}
 
 ##############################
 # Helper: NSG deny-all check
