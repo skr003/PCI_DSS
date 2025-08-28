@@ -75,8 +75,8 @@ resource "azurerm_linux_virtual_machine" "vm" {
   allow_extension_operations      = false
   provision_vm_agent              = true
   admin_ssh_key {
-    username   = "azureuser"
-    public_key = file("/var/lib/jenkins/.ssh/jenkins_vm_key.pub")
+    username   = "adminuser"
+    public_key = file("~/.ssh/id_rsa.pub")
   }
   os_disk {
     caching              = "ReadWrite"
