@@ -1,100 +1,91 @@
 #!/bin/bash
+set -euo pipefail
 
-set -e
-
+# Requires: az, jq
 OUTPUT_DIR="output"
+mkdir -p "$OUTPUT_DIR"
 
-mkdir -p $OUTPUT_DIR
-
-echo "[*] Collecting VMs..."
-
-az vm list -d -o json \
-| jq '[ .[] | {
-type: "azurerm_virtual_machine",
-name: .name,
-values: {
-diagnostics_profile: {
-boot_diagnostics: {
-enabled: ( .diagnosticsProfile.bootDiagnostics.enabled // false )
-}
-}
-}
-}]' > $OUTPUT_DIR/vms.json
+echo "[*] Collecting Virtual Machines..."
+az vm list -d -o json > "$OUTPUT_DIR/vms_raw.json"
 
 echo "[*] Collecting Storage Accounts..."
+az storage account list -o json > "$OUTPUT_DIR/storage_raw.json"
 
-az storage account list -o json \
-| jq '[ .[] | {
-type: "azurerm_storage_account",
-name: .name,
-values: {
-enable_https_traffic_only: ( .enableHttpsTrafficOnly // false ),
-immutable_storage_with_versioning: {
-enabled: ( .immutableStorageWithVersioning.enabled // false )
-}
-}
-}]' > $OUTPUT_DIR/storage.json
+echo "[*] Collecting Diagnostic Settings for VMs and Storage Accounts..."
+DIAG_FILE="$OUTPUT_DIR/diagnostics_raw.json"
+echo "[]" > "$DIAG_FILE"
 
-echo "[*] Collecting Diagnostic Settings..."
+# Collect VM IDs
+VM_IDS=$(az vm list --query "[].id" -o tsv)
+for rid in $VM_IDS; do
+  ds=$(az monitor diagnostic-settings list --resource "$rid" -o json)
+  if [ "$ds" != "[]" ]; then
+    echo "$ds" | jq --arg rid "$rid" '[ .[] | { name, resourceId: $rid, logs: (.logs // []) } ]' \
+    | jq -s 'add' > tmp.json
+    jq -s 'add' "$DIAG_FILE" tmp.json > merged.json
+    mv merged.json "$DIAG_FILE"
+    rm -f tmp.json
+  fi
+done
 
-DIAGNOSTICS_FILE="$OUTPUT_DIR/diagnostics.json"
-echo "[]" > $DIAGNOSTICS_FILE
-
-for rid in $(az resource list --query "[?type=='Microsoft.Compute/virtualMachines' || type=='Microsoft.Storage/storageAccounts' || type=='Microsoft.KeyVault/vaults'].id" -o tsv); do
-ds=$(az monitor diagnostic-settings list --resource "$rid" -o json)
-if [ "$ds" != "[]" ]; then
-echo "$ds" | jq --arg rid "$rid" '[ .[] | {
-type: "azurerm_monitor_diagnostic_setting",
-name: .name,
-values: {
-resourceId: $rid,
-logs: ( .logs // [] )
-}
-}]' | jq -s 'add' > tmp.json
-jq -s 'add' $DIAGNOSTICS_FILE tmp.json > merged.json
-mv merged.json $DIAGNOSTICS_FILE
-rm -f tmp.json
-fi
+# Collect Storage Account IDs
+SA_IDS=$(az storage account list --query "[].id" -o tsv)
+for rid in $SA_IDS; do
+  ds=$(az monitor diagnostic-settings list --resource "$rid" -o json)
+  if [ "$ds" != "[]" ]; then
+    echo "$ds" | jq --arg rid "$rid" '[ .[] | { name, resourceId: $rid, logs: (.logs // []) } ]' \
+    | jq -s 'add' > tmp.json
+    jq -s 'add' "$DIAG_FILE" tmp.json > merged.json
+    mv merged.json "$DIAG_FILE"
+    rm -f tmp.json
+  fi
 done
 
 echo "[*] Collecting Log Analytics Workspaces..."
-
-az monitor log-analytics workspace list -o json \
-| jq '[ .[] | {
-type: "azurerm_log_analytics_workspace",
-name: .name,
-values: {
-retention_in_days: ( .retentionInDays // 0 )
-}
-}]' > $OUTPUT_DIR/log_analytics.json
+az monitor log-analytics workspace list -o json > "$OUTPUT_DIR/workspaces_raw.json"
 
 echo "[*] Collecting Metric Alerts..."
-
-ALERTS_FILE="$OUTPUT_DIR/alerts.json"
-echo "[]" > $ALERTS_FILE
-
+ALERTS_FILE="$OUTPUT_DIR/alerts_raw.json"
+echo "[]" > "$ALERTS_FILE"
 for rid in $(az resource list --resource-type "Microsoft.Insights/metricAlerts" --query "[].id" -o tsv); do
-alert=$(az resource show --ids "$rid" -o json)
-echo "$alert" | jq '[{
-type: "azurerm_monitor_metric_alert",
-name: .name,
-values: {
-enabled: ( .properties.enabled // false )
-}
-}]' > tmp.json
-jq -s 'add' $ALERTS_FILE tmp.json > merged.json
-mv merged.json $ALERTS_FILE
-rm -f tmp.json
+  az resource show --ids "$rid" -o json \
+  | jq '[{
+      id, name,
+      enabled: (.properties.enabled // false)
+    }]' > tmp.json
+  jq -s 'add' "$ALERTS_FILE" tmp.json > merged.json
+  mv merged.json "$ALERTS_FILE"
+  rm -f tmp.json
 done
 
-echo "[*] Merging into azure.json..."
+echo "[*] Building unified input (azure.json) for OPA..."
+jq -n \
+  --argfile vms "$OUTPUT_DIR/vms_raw.json" \
+  --argfile storage "$OUTPUT_DIR/storage_raw.json" \
+  --argfile diagnostics "$OUTPUT_DIR/diagnostics_raw.json" \
+  --argfile workspaces "$OUTPUT_DIR/workspaces_raw.json" \
+  --argfile alerts "$OUTPUT_DIR/alerts_raw.json" \
+  '{
+    vms: ($vms | map({
+      id, name, type: "Microsoft.Compute/virtualMachines",
+      diagnosticsProfile: (.diagnosticsProfile // {}),
+      # Normalize bootDiagnostics flag for convenience
+      diagnostics_enabled: ((.diagnosticsProfile.bootDiagnostics.enabled // false))
+    })),
+    storage: ($storage | map({
+      id, name, type: "Microsoft.Storage/storageAccounts",
+      enableHttpsTrafficOnly: (.enableHttpsTrafficOnly // false),
+      immutableStorageWithVersioning: (.immutableStorageWithVersioning // {}),
+      # Normalize immutability flag
+      immutability_enabled: ((.immutableStorageWithVersioning.enabled // false))
+    })),
+    diagnostics: $diagnostics,
+    workspaces: ($workspaces | map({
+      id, name, retentionInDays: (.retentionInDays // 0)
+    })),
+    alerts: ($alerts | map({
+      id, name, enabled
+    }))
+  }' > "$OUTPUT_DIR/azure.json"
 
-jq -s '{resource_changes: add}' \
-$OUTPUT_DIR/vms.json \
-$OUTPUT_DIR/storage.json \
-$OUTPUT_DIR/diagnostics.json \
-$OUTPUT_DIR/log_analytics.json \
-$OUTPUT_DIR/alerts.json \
-> $OUTPUT_DIR/azure.json
-
-echo "[*] Data collection complete → $OUTPUT_DIR/azure.json"
+echo "[*] Done → $OUTPUT_DIR/azure.json"
