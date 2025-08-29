@@ -37,7 +37,7 @@ pipeline {
     }
     stage('Validate PCI DSS') {
       steps {
-        sh 'bash scripts/validate_pci.sh'
+        sh 'python3 scripts/validate_pci.py'
       }
     }   
     stage('OPA Policy Validation') {
