@@ -10,13 +10,13 @@ echo "[*] Validating PCI DSS Req 10 with OPA..."
 opa eval --input $OUTPUT_DIR/azure.json \
   --data policy/azure/pci_dss.rego \
   'data.azure.pci_dss.deny' \
-  --format=json > $OUTPUT_DIR/drift.json
+  --format=json -o values > $OUTPUT_DIR/drift.json
 
 # Both passes & violations → result.json
 opa eval --input $OUTPUT_DIR/azure.json \
   --data policy/azure/pci_dss.rego \
-  '{"deny": data.azure.pci_dss.deny, "pass": data.azure.pci_dss.pass}' \
-  --format=json > $OUTPUT_DIR/result.json
+  '{"deny": data.azure.pci_dss.deny, "pass": data.azure.pci.pass}' \
+  --format=json -o values > $OUTPUT_DIR/result.json
 
 echo "[*] Validation complete."
 echo "    - Violations → $OUTPUT_DIR/drift.json"
