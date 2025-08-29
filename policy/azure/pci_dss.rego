@@ -60,20 +60,24 @@ pass[msg] if {
 deny[msg] if {
   some d
   azure_diagnostics[d]
-  not some log
-  log := d.values.logs[_]
-  log.enabled
+  not exists_enabled_log(d)
   msg := sprintf("PCI DSS Req 10.2 Violation: Diagnostic setting %s has no audit logs enabled.", [d.name])
 }
 
 pass[msg] if {
   some d
   azure_diagnostics[d]
+  exists_enabled_log(d)
+  msg := sprintf("PCI DSS Req 10.2 Passed: Diagnostic setting %s has audit logs enabled.", [d.name])
+}
+
+# Helper function
+exists_enabled_log(d) {
   some log
   log := d.values.logs[_]
   log.enabled
-  msg := sprintf("PCI DSS Req 10.2 Passed: Diagnostic setting %s has audit logs enabled.", [d.name])
 }
+
 
 # 10.3 – Audit logs protected
 deny[msg] if {
