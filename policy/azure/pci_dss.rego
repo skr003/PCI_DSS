@@ -95,13 +95,13 @@ deny[msg] if {
 
 # 10.1 Processes and mechanisms defined and documented
 deny[msg] if {
-  some res
+  some vm
   azure_resources[vm]
   not res.values.diagnostics_profile.boot_diagnostics.enabled
   msg := sprintf("PCI DSS Req 10.1 Violation: Resource %s missing defined diagnostic logging.", [vm.name])
 }
 pass[msg] if {
-  some res
+  some vm
   azure_resources[vm]
   not res.values.diagnostics_profile.boot_diagnostics.enabled
   msg := sprintf("PCI DSS Req 10.1 Passed: Resource %s has diagnostic logging enabled.", [vm.name])
