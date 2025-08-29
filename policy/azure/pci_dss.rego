@@ -72,12 +72,11 @@ pass[msg] if {
 }
 
 # Helper function
-exists_enabled_log(d) {
+exists_enabled_log(d) if {
   some log
   log := d.values.logs[_]
   log.enabled
 }
-
 
 # 10.3 – Audit logs protected
 deny[msg] if {
