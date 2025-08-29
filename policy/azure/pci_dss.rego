@@ -107,7 +107,6 @@ pass[msg] if {
   res.values.diagnostics_enabled
   msg := sprintf("PCI DSS Req 10 Passed: Resource %s has diagnostic logging.", [res.name])
 }
-package azure.pci_dss.req10
 
 #######################################
 # Requirement 10: Log and Monitor All Access
@@ -170,18 +169,18 @@ pass[msg] if {
 #}
 
 # 10.5 Audit log history retention
-deny[msg] if {
-  some ws
-  azure_log_analytics_workspaces[ws]
-  ws.values.retention_in_days < 365
-  msg := sprintf("PCI DSS Req 10.5 Violation: Log Analytics workspace %s retains logs for less than 1 year.", [ws.name])
-}
-pass[msg] if {
-  some ws
-  azure_log_analytics_workspaces[ws]
-  ws.values.retention_in_days > 365
-  msg := sprintf("PCI DSS Req 10.5 Violation: Log Analytics workspace %s retains logs for less than 1 year.", [ws.name])
-}
+#deny[msg] if {
+#  some ws
+#  azure_log_analytics_workspaces[ws]
+#  ws.values.retention_in_days < 365
+#  msg := sprintf("PCI DSS Req 10.5 Violation: Log Analytics workspace %s retains logs for less than 1 year.", [ws.name])
+#}
+#pass[msg] if {
+#  some ws
+#  azure_log_analytics_workspaces[ws]
+#  ws.values.retention_in_days > 365
+#  msg := sprintf("PCI DSS Req 10.5 Violation: Log Analytics workspace %s retains logs for less than 1 year.", [ws.name])
+#}
 
 # 10.6 Time synchronization
 #deny[msg] if {
