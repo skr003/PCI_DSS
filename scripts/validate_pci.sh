@@ -2,7 +2,7 @@
 set -euo pipefail
 
 OUTPUT_DIR="output"
-POLICY_FILE="policy/azure/pci_dss_req10.rego"
+POLICY_FILE="policy/azure/pci_dss.rego"
 
 mkdir -p "$OUTPUT_DIR"
 
