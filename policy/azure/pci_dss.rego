@@ -1,105 +1,96 @@
-package azure.pci_dss.req10
+package azurecli.pci_dss.req10
 
-# Shortcuts
-azure_vms[res] if {
-  res := input.resource_changes[_]
-  res.type == "azurerm_virtual_machine"
+# Input shape:
+# {
+#   "vms": [ { name, type: "Microsoft.Compute/virtualMachines", diagnostics_enabled: bool, diagnosticsProfile: {...} } ],
+#   "storage": [ { name, type: "Microsoft.Storage/storageAccounts", immutability_enabled: bool, enableHttpsTrafficOnly: bool } ],
+#   "diagnostics": [ { name, resourceId, logs: [ {enabled: bool, category, ...}, ... ] } ],
+#   "workspaces": [ { name, retentionInDays: number } ],
+#   "alerts": [ { name, enabled: bool } ]
+# }
+
+###############################
+# Shortcuts (work directly on Azure CLI JSON)
+###############################
+
+azure_vms[vm]          { vm := input.vms[_] }
+azure_diagnostics[ds]  { ds := input.diagnostics[_] }
+azure_workspaces[ws]   { ws := input.workspaces[_] }
+azure_metric_alerts[a] { a := input.alerts[_] }
+
+###############################
+# Helper checks
+###############################
+
+vm_boot_diag_enabled(vm) {
+  vm.diagnostics_enabled == true
 }
 
-azure_storage_accounts[res] if {
-  res := input.resource_changes[_]
-  res.type == "azurerm_storage_account"
-}
-
-azure_diagnostics[res] if {
-  res := input.resource_changes[_]
-  res.type == "azurerm_monitor_diagnostic_setting"
-}
-
-azure_log_analytics[res] if {
-  res := input.resource_changes[_]
-  res.type == "azurerm_log_analytics_workspace"
-}
-
-azure_metric_alerts[res] if {
-  res := input.resource_changes[_]
-  res.type == "azurerm_monitor_metric_alert"
-}
-
-# Helper rules
-boot_diag_enabled(vm) if {
-  vm.values.diagnostics_profile.boot_diagnostics.enabled
-}
-
-exists_enabled_log(d) if {
+diag_has_enabled_log(ds) {
   some i
-  d.values.logs[i].enabled
+  ds.logs[i].enabled == true
 }
 
-retention_ok(la) if {
-  la.values.retention_in_days >= 90
+workspace_retention_ok(ws) {
+  ws.retentionInDays >= 365
 }
 
-metric_alert_enabled(a) if {
-  a.values.enabled
+metric_alert_enabled(a) {
+  a.enabled == true
 }
 
-# Requirement 10.1
-deny[msg] if {
-  some vm
-  azure_vms[vm]
-  not boot_diag_enabled(vm)
+###############################
+# PCI DSS Req 10 rules
+###############################
+
+# 10.1 – Diagnostic logging enabled (VM boot diagnostics proxy)
+deny[msg] {
+  vm := azure_vms[_]
+  not vm_boot_diag_enabled(vm)
   msg := sprintf("PCI DSS Req 10.1 Violation: VM %s missing diagnostic logging.", [vm.name])
 }
 
-pass[msg] if {
-  some vm
-  azure_vms[vm]
-  boot_diag_enabled(vm)
+pass[msg] {
+  vm := azure_vms[_]
+  vm_boot_diag_enabled(vm)
   msg := sprintf("PCI DSS Req 10.1 Passed: VM %s has diagnostic logging enabled.", [vm.name])
 }
 
-# Requirement 10.2
-deny[msg] if {
-  some d
-  azure_diagnostics[d]
-  not exists_enabled_log(d)
-  msg := sprintf("PCI DSS Req 10.2 Violation: Diagnostic setting %s has no audit logs enabled.", [d.name])
+# 10.2 – Audit logs implemented (diagnostic settings have at least one enabled log)
+deny[msg] {
+  ds := azure_diagnostics[_]
+  not diag_has_enabled_log(ds)
+  msg := sprintf("PCI DSS Req 10.2 Violation: Diagnostic setting %s has no audit logs enabled.", [ds.name])
 }
 
-pass[msg] if {
-  some d
-  azure_diagnostics[d]
-  exists_enabled_log(d)
-  msg := sprintf("PCI DSS Req 10.2 Passed: Diagnostic setting %s has audit logs enabled.", [d.name])
+pass[msg] {
+  ds := azure_diagnostics[_]
+  diag_has_enabled_log(ds)
+  msg := sprintf("PCI DSS Req 10.2 Passed: Diagnostic setting %s has audit logs enabled.", [ds.name])
 }
 
-# Requirement 10.5 (log retention)
-deny[msg] if {
-  some la
-  azure_log_analytics[la]
-  not retention_ok(la)
-  msg := sprintf("PCI DSS Req 10.5 Violation: Log Analytics workspace %s has insufficient retention (%d days).", [la.name, la.values.retention_in_days])
+# 10.5 – Log retention at least 1 year
+deny[msg] {
+  ws := azure_workspaces[_]
+  not workspace_retention_ok(ws)
+  msg := sprintf("PCI DSS Req 10.5 Violation: Log Analytics workspace %s retains logs for less than 1 year (%d days).", [ws.name, ws.retentionInDays])
 }
 
-pass[msg] if {
-  some la
-  azure_log_analytics[la]
-  retention_ok(la)
-  msg := sprintf("PCI DSS Req 10.5 Passed: Log Analytics workspace %s meets retention policy (%d days).", [la.name, la.values.retention_in_days])
+pass[msg] {
+  ws := azure_workspaces[_]
+  workspace_retention_ok(ws)
+  msg := sprintf("PCI DSS Req 10.5 Passed: Log Analytics workspace %s retains logs for at least 1 year (%d days).", [ws.name, ws.retentionInDays])
 }
 
-# Requirement 10.7 (alerts configured)
-deny[msg] if {
-  some a
-  azure_metric_alerts[a]
+# 10.7 – Critical security control alerting is enabled (metric alerts)
+deny[msg] {
+  a := azure_metric_alerts[_]
   not metric_alert_enabled(a)
   msg := sprintf("PCI DSS Req 10.7 Violation: Metric alert %s is disabled.", [a.name])
 }
 
-pass[msg] if {
-  some a
-  azure_metric_alerts[a]
+pass[msg] {
+  a := azure_metric_alerts[_]
   metric_alert_enabled(a)
   msg := sprintf("PCI DSS Req 10.7 Passed: Metric alert %s is enabled.", [a.name])
 }
