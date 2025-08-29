@@ -8,11 +8,10 @@ mkdir -p $OUTPUT_DIR
 
 echo "[*] Validating PCI DSS Req 10 with OPA..."
 
-# Violations only → drift.json (JSON array)
 opa eval --input $OUTPUT_DIR/azure.json \
-  --data policy/azure/pci_dss.rego \
-  'data.azure.pci_dss.req10.deny' \
-  --format=json | jq '.result.expressions.value' > $OUTPUT_DIR/drift.json
-
+  --data policy/azure/pci_dss_req10.rego \
+  '{"deny": data.azure.pci_dss.req10.deny, "pass": data.azure.pci_dss.req10.pass}' \
+  --format=json | jq '.result.value' > $OUTPUT_DIR/result.json
+  
 echo "[*] Validation complete."
 echo " - Violations → $OUTPUT_DIR/drift.json"
