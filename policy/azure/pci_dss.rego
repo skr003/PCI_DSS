@@ -1,4 +1,4 @@
-package azure.pci_dss.req10
+package azure.pci_dss
 
 default allow = false
 allow if { count(deny) == 0 }
