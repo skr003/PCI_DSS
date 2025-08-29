@@ -93,18 +93,20 @@ deny[msg] if {
 # Requirement 10 â€“ Log and Monitor All Access
 ##############################
 
-# 10.1 Processes and mechanisms defined and documented
+
+# 10.1 – Diagnostic logging enabled (VM boot diagnostics)
 deny[msg] if {
-  some r
-  azure_vms[r]
-  not r.values.diagnostics_profile.boot_diagnostics.enabled
-  msg := sprintf("PCI DSS Req 10.1 Violation: Resource %s missing defined diagnostic logging.", [r.name])
+  some vm
+  azure_vms[vm]
+  not vm.values.diagnostics_profile.boot_diagnostics.enabled
+  msg := sprintf("PCI DSS Req 10.1 Violation: VM %s missing diagnostic logging.", [vm.name])
 }
+
 pass[msg] if {
-  some r
-  azure_vms[r]
-  not r.values.diagnostics_profile.boot_diagnostics.enabled
-  msg := sprintf("PCI DSS Req 10.1 Passed: Resource %s has diagnostic logging enabled.", [r.name])
+  some vm
+  azure_vms[vm]
+  vm.values.diagnostics_profile.boot_diagnostics.enabled
+  msg := sprintf("PCI DSS Req 10.1 Passed: VM %s has diagnostic logging enabled.", [vm.name])
 }
 
 ##############################
@@ -128,14 +130,9 @@ azure_storage_accounts[r] if {
   r.type == "azurerm_storage_account"
 }
 
-azure_vms[r] if {
-  r := input.resource_changes[_]
-  r.type == "azurerm_linux_virtual_machine"
-}
-
-azure_vms[r] if {
-  r := input.resource_changes[_]
-  r.type == "azurerm_windows_virtual_machine"
+azure_vms[res] if {
+  res := input.resource_changes[_]
+  res.type == "azurerm_virtual_machine"
 }
 
 azure_identities[r] if {
