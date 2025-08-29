@@ -1,8 +1,6 @@
 package azure.pci_dss.req10
 
-#
 # Shortcuts
-#
 azure_vms[res] if {
   res := input.resource_changes[_]
   res.type == "azurerm_virtual_machine"
@@ -28,9 +26,7 @@ azure_metric_alerts[res] if {
   res.type == "azurerm_monitor_metric_alert"
 }
 
-#
 # Helper rules
-#
 boot_diag_enabled(vm) if {
   vm.values.diagnostics_profile.boot_diagnostics.enabled
 }
@@ -48,9 +44,7 @@ metric_alert_enabled(a) if {
   a.values.enabled
 }
 
-#
 # Requirement 10.1
-#
 deny[msg] if {
   some vm
   azure_vms[vm]
@@ -65,9 +59,7 @@ pass[msg] if {
   msg := sprintf("PCI DSS Req 10.1 Passed: VM %s has diagnostic logging enabled.", [vm.name])
 }
 
-#
 # Requirement 10.2
-#
 deny[msg] if {
   some d
   azure_diagnostics[d]
@@ -82,9 +74,7 @@ pass[msg] if {
   msg := sprintf("PCI DSS Req 10.2 Passed: Diagnostic setting %s has audit logs enabled.", [d.name])
 }
 
-#
 # Requirement 10.5 (log retention)
-#
 deny[msg] if {
   some la
   azure_log_analytics[la]
@@ -99,9 +89,7 @@ pass[msg] if {
   msg := sprintf("PCI DSS Req 10.5 Passed: Log Analytics workspace %s meets retention policy (%d days).", [la.name, la.values.retention_in_days])
 }
 
-#
 # Requirement 10.7 (alerts configured)
-#
 deny[msg] if {
   some a
   azure_metric_alerts[a]
