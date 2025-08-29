@@ -93,53 +93,20 @@ deny[msg] if {
 # Requirement 10 â€“ Log and Monitor All Access
 ##############################
 
-# Resources must have diagnostic logs enabled
+# 10.1 Processes and mechanisms defined and documented
 deny[msg] if {
-  some res
-  azure_resources[res]
-  not res.values.diagnostics_enabled
-  msg := sprintf("PCI DSS Req 10 Violation: Resource %s missing diagnostic logging.", [res.name])
+  some r
+  azure_resources[r]
+  not r.values.diagnostics_profile.boot_diagnostics.enabled
+  msg := sprintf("PCI DSS Req 10.1 Violation: Resource %s missing defined diagnostic logging.", [r.name])
 }
-
 pass[msg] if {
-  some res
-  azure_resources[res]
-  res.values.diagnostics_enabled
-  msg := sprintf("PCI DSS Req 10 Passed: Resource %s has diagnostic logging.", [res.name])
+  some r
+  azure_resources[r]
+  r.values.diagnostics_profile.boot_diagnostics.enabled
+  msg := sprintf("PCI DSS Req 10.1 Passed: Resource %s is having defined diagnostic logging.", [r.name])
 }
 
-
-deny[msg] if {
-  some res
-  azure_resources[res]
-  res.values.diagnostics_enabled
-  msg := sprintf("PCI DSS Req 10.1 Passed: Resource %s has diagnostic logging.", [res.name])
-}
-
-# Compliant (pass)
-pass[msg] if {
-  some res
-  azure_resources[res]
-  not res.values.diagnostics_enabled
-  msg := sprintf("PCI DSS Req 10.2 Passed: Resource %s has diagnostic logging enabled.", [res.name])
-}
-
-
-# Violation (fail)
-deny[msg] if {
-  some res
-  azure_resources[res]
-  not res.values.diagnostics_profile.boot_diagnostics.enabled
-  msg := sprintf("PCI DSS Req 10.3 Violation: Resource %s missing diagnostic logging.", [res.name])
-}
-
-# Compliant (pass)
-pass[msg] if {
-  some res
-  azure_resources[res]
-  res.values.diagnostics_profile.boot_diagnostics.enabled
-  msg := sprintf("PCI DSS Req 10.4 Passed: Resource %s has diagnostic logging enabled.", [res.name])
-}
 ##############################
 # Helper: NSG deny-all check
 ##############################
