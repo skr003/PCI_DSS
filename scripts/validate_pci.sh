@@ -17,7 +17,6 @@ opa eval --input $OUTPUT_DIR/azure.json \
   --data policy/azure/pci_dss_req10.rego \
   '{"deny": data.azure.pci_dss.req10.deny, "pass": data.azure.pci_dss.req10.pass}' \
   --format=json | jq '.result[0].expressions[0].value' > $OUTPUT_DIR/result.json
-
   
 echo "[*] Validation complete."
 echo " - Violations → $OUTPUT_DIR/drift.json"
