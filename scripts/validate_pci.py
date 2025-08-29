@@ -22,7 +22,7 @@ import sys
 from typing import Any, Dict, List, Optional
 
 OUTPUT_DIR = "output"
-INPUT_FILE = os.path.join(OUTPUT_DIR, "azure.json")
+INPUT_FILE = os.path.join(OUTPUT_DIR, "output/azure.json")
 DRIFT_FILE = os.path.join(OUTPUT_DIR, "pci_dss_drifts.json")
 
 
