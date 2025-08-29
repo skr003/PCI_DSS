@@ -48,27 +48,27 @@ pipeline {
         sh 'opa eval --input output/azure.json --data policy/azure/pci_dss.rego "data.azure.pci_dss.allow"'
       }  
     }
-    stage('Upload Reports to Azure Storage') {
-      steps {
-        sh '''
-          # Set variables - REPLACE WITH YOUR ACTUAL STORAGE KEY
-          STORAGE_ACCOUNT="reportingpcidss25655"
-          CONTAINER="reports"
-          STORAGE_ACCOUNT_KEY="pUsU+U4ZVzYx5jVJAyiEXeVIhgel/4iGxqYl+cY1WSJI5NKsvlbYN5Si9NXHr8TKQTB92BHvTH64+AStjLZLuQ=="
+    // stage('Upload Reports to Azure Storage') {
+    //   steps {
+    //     sh '''
+    //       # Set variables - REPLACE WITH YOUR ACTUAL STORAGE KEY
+    //       STORAGE_ACCOUNT="reportingpcidss25655"
+    //       CONTAINER="reports"
+    //       STORAGE_ACCOUNT_KEY="pUsU+U4ZVzYx5jVJAyiEXeVIhgel/4iGxqYl+cY1WSJI5NKsvlbYN5Si9NXHr8TKQTB92BHvTH64+AStjLZLuQ=="
           
-          # Check if files exist
-          if [ ! -f output/pci_dss_drifts.json ]; then echo "Error: pci_dss_drifts.json not found"; exit 1; fi
-          if [ ! -f output/azure.json ]; then echo "Error: azure.json not found"; exit 1; fi
+    //       # Check if files exist
+    //       if [ ! -f output/pci_dss_drifts.json ]; then echo "Error: pci_dss_drifts.json not found"; exit 1; fi
+    //       if [ ! -f output/azure.json ]; then echo "Error: azure.json not found"; exit 1; fi
           
-          # Upload to build-specific path
-          az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY" --overwrite
-          az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY" --overwrite
+    //       # Upload to build-specific path
+    //       az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY" --overwrite
+    //       az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY" --overwrite
           
-          # Upload to 'latest' path
-          az storage blob upload --container-name $CONTAINER --name "latest/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY" --overwrite
-          az storage blob upload --container-name $CONTAINER --name "latest/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY" --overwrite
-        '''
-      }
-    }
+    //       # Upload to 'latest' path
+    //       az storage blob upload --container-name $CONTAINER --name "latest/pci_dss_drifts.json" --file output/pci_dss_drifts.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY" --overwrite
+    //       az storage blob upload --container-name $CONTAINER --name "latest/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY" --overwrite
+    //     '''
+    //   }
+    // }
   }
 }
